@@ -6,7 +6,7 @@ Base path: `/api/v1`. JSON only. OpenAPI served at `/swagger-ui.html` (`/v3/api-
 
 | Topic | Rule |
 |---|---|
-| Auth | `Authorization: Bearer <access JWT>` (15 min). Refresh token in httpOnly, Secure, SameSite=Strict cookie (`/api/v1/auth/refresh` path only) |
+| Auth | `Authorization: Bearer <access JWT>` (RS256, 15 min, `sub` = user ID, `roles` claim). Refresh token only in the httpOnly, Secure, SameSite=Strict `cx_refresh` cookie scoped to `/api/v1/auth`; rotated on every refresh, reuse revokes the whole session family. Deny-by-default: unknown routes return 401 to anonymous callers |
 | Errors | RFC 7807 `application/problem+json`: `type`, `title`, `status`, `detail`, `instance`, `code`, `correlationId`, `errors[]` (field validation) |
 | Pagination | `?page=0&size=20&sort=price,asc` (size max 100). Response: `{ content, page, size, totalElements, totalPages }` |
 | Idempotency | `Idempotency-Key` header **required** on `POST /orders`, `POST /orders/{n}/payments`, `POST /admin/payments/{id}/refunds`. Same key + different body → `422` |
@@ -14,7 +14,7 @@ Base path: `/api/v1`. JSON only. OpenAPI served at `/swagger-ui.html` (`/v3/api-
 | Money | `{ "amount": 12000, "currency": "USD" }` (minor units) |
 | Rate limits | `429` + `Retry-After` |
 
-Common error codes: `VALIDATION_FAILED` (400), `UNAUTHENTICATED` (401), `FORBIDDEN` (403), `NOT_FOUND` (404), `CONFLICT` / `INSUFFICIENT_STOCK` / `INVALID_STATE_TRANSITION` / `IDEMPOTENCY_KEY_IN_PROGRESS` (409), `IDEMPOTENCY_KEY_MISMATCH` / `COUPON_INVALID` (422), `RATE_LIMITED` (429).
+Common error codes: `VALIDATION_FAILED` / `INVALID_RESET_TOKEN` (400), `UNAUTHENTICATED` / `INVALID_CREDENTIALS` / `INVALID_REFRESH_TOKEN` (401), `FORBIDDEN` / `ACCOUNT_DISABLED` (403), `EMAIL_ALREADY_REGISTERED` (409), `NOT_FOUND` (404), `CONFLICT` / `INSUFFICIENT_STOCK` / `INVALID_STATE_TRANSITION` / `IDEMPOTENCY_KEY_IN_PROGRESS` (409), `IDEMPOTENCY_KEY_MISMATCH` / `COUPON_INVALID` (422), `RATE_LIMITED` (429).
 
 ## Endpoints
 
@@ -25,7 +25,7 @@ Access: 🌐 public · 👤 customer · 🛠 ADMIN · 📦 CATALOG_MANAGER · �
 POST   /auth/register                      🌐
 POST   /auth/login                         🌐  (rate limited)
 POST   /auth/refresh                       🌐  (cookie)
-POST   /auth/logout                        👤
+POST   /auth/logout                        🌐  (cookie; idempotent)
 POST   /auth/password-reset/request        🌐  (always 202 — no user enumeration)
 POST   /auth/password-reset/confirm        🌐
 GET    /me                                 👤
@@ -89,8 +89,8 @@ GET    /admin/inventory/{variantId}/movements     🛠🚚
 GET    /admin/orders?status=               🛠🚚
 POST   /admin/orders/{orderNumber}/transitions    🛠🚚  { toStatus, reason }
 POST   /admin/payments/{id}/refunds        🛠   Idempotency-Key
-GET    /admin/customers                    🛠
-PATCH  /admin/customers/{id}               🛠   lock/unlock, roles
+GET    /admin/customers?q=                 🛠   email search, paginated
+PATCH  /admin/customers/{id}               🛠   { status?, roles? } — cannot lock self / drop own ADMIN
 CRUD   /admin/coupons                      🛠
 GET    /admin/reviews?status=PENDING       🛠
 POST   /admin/reviews/{id}/approve|reject  🛠

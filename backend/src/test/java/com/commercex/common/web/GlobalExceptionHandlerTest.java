@@ -20,8 +20,12 @@ import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,7 +34,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @WebMvcTest(controllers = GlobalExceptionHandlerTest.ThrowingController.class)
-@Import({GlobalExceptionHandlerTest.ThrowingController.class, GlobalExceptionHandler.class, CorrelationIdFilter.class})
+@Import({GlobalExceptionHandlerTest.ThrowingController.class, GlobalExceptionHandler.class, CorrelationIdFilter.class,
+        GlobalExceptionHandlerTest.PermitAllSecurity.class})
 class GlobalExceptionHandlerTest {
 
     @Autowired
@@ -97,6 +102,18 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
                 .andExpect(jsonPath("$.detail").value("An unexpected error occurred"))
                 .andExpect(content().string(not(containsString("secret-db-password"))));
+    }
+
+    /** Security is covered by integration tests; this slice tests error rendering only. */
+    @TestConfiguration
+    static class PermitAllSecurity {
+
+        @Bean
+        SecurityFilterChain permitAll(HttpSecurity http) throws Exception {
+            return http.csrf(csrf -> csrf.disable())
+                    .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                    .build();
+        }
     }
 
     record CreateRequest(@NotBlank String name, @Min(1) int quantity) {

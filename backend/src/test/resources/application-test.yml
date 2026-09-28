@@ -1,0 +1,12 @@
+commercex:
+  security:
+    jwt:
+      allow-ephemeral-keys: true
+  auth:
+    refresh-cookie:
+      secure: false
+    rate-limits:
+      # All test requests come from 127.0.0.1: keep IP limits out of the way; per-email limits stay realistic.
+      login-per-ip: { capacity: 100000, period: 1m }
+      register-per-ip: { capacity: 100000, period: 1m }
+      password-reset-per-ip: { capacity: 100000, period: 1m }

@@ -13,16 +13,16 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 2 — Authentication + Users (next) |
-| **Current task** | Phase 1 complete — `./mvnw verify` green (22 unit + 5 integration tests) |
+| **Current phase** | Phase 3 — Product Catalog (next) |
+| **Current task** | Phase 2 complete — `./mvnw verify` green (31 unit + 35 integration tests) |
 | **Last updated** | 2026-09-28 |
-| **Repo state** | Git `main`. Backend foundation in `backend/`, Postgres in `infra/docker-compose.yml`. Phase 1 not yet committed |
-| **Blockers** | None. Note: app startup ~70 s on dev machine — revisit in Phase 13 performance review |
+| **Repo state** | Git `main`, Phase 1 = `7a56fde`. Phase 2 (auth + notification modules, V2) not yet committed |
+| **Blockers** | None. Note: app startup varied 17–70 s on dev machine — revisit in Phase 13 performance review |
 
 ### Next up
-1. Commit Phase 1 (awaiting user go-ahead)
-2. Phase 2: `V2__create_users.sql` (users, roles, addresses, refresh/reset tokens)
-3. Phase 2: Spring Security + RS256 JWT, register/login/refresh/logout
+1. Commit Phase 2 (awaiting user go-ahead)
+2. Phase 3: `V3__create_categories_brands.sql`, `V4__create_products.sql` (products, variants, options, images, tags, FTS)
+3. Phase 3: public catalog API (search/filter/sort/paginate) + admin/catalog-manager CRUD
 
 ---
 
@@ -32,7 +32,7 @@
 |---|---|---|
 | 0 | Product + Architecture | `[x]` |
 | 1 | Spring Boot Foundation | `[x]` |
-| 2 | Authentication + Users | `[ ]` |
+| 2 | Authentication + Users | `[x]` |
 | 3 | Product Catalog | `[ ]` |
 | 4 | Inventory | `[ ]` |
 | 5 | Cart + Wishlist | `[ ]` |
@@ -81,16 +81,16 @@
 
 ## Phase 2 — Authentication + Users
 
-- [ ] `users` + `roles` migrations
-- [ ] Register / login / refresh / logout
-- [ ] Password hashing (BCrypt via `DelegatingPasswordEncoder`)
-- [ ] JWT (RS256) issuance + validation; rotating refresh tokens in httpOnly cookie
-- [ ] RBAC: CUSTOMER, ADMIN, CATALOG_MANAGER, OPERATIONS
-- [ ] Customer profile + addresses
-- [ ] Password reset flow (token-based)
-- [ ] Rate limiting on auth endpoints
-- [ ] Audit log for security events
-- [ ] Tests: authN, authZ per role, validation
+- [x] `V2__create_users.sql`: users (citext email), user_roles, addresses (one-default partial unique index), refresh_tokens, password_reset_tokens
+- [x] Register / login / refresh / logout (`/api/v1/auth/*`)
+- [x] Password hashing (BCrypt via `DelegatingPasswordEncoder`, auto-upgrade on login); 10 chars min, 72 bytes max (no silent truncation)
+- [x] JWT (RS256) issuance + validation (issuer checked); rotating hashed refresh tokens in httpOnly cookie with reuse detection → family revocation
+- [x] RBAC: CUSTOMER, ADMIN, CATALOG_MANAGER, OPERATIONS (`roles` claim → `ROLE_*`, deny-by-default, `@PreAuthorize`); admin customer search + lock/roles; first admin bootstrapped from config
+- [x] Customer profile (`/me`), change password (revokes sessions), address book (owner-scoped, max 20, default handling)
+- [x] Password reset flow: hashed single-use 30-min token, no account enumeration, email via `notification` module (after-commit async listener → SMTP/Mailpit)
+- [x] Rate limiting (Bucket4j + Caffeine, in-memory) on login (IP + email), register (IP), reset (IP + email); 429 + `Retry-After`
+- [x] Audit log (own transaction, so failed logins persist): registered, login ok/failed/blocked, logout, refresh reuse, password changed/reset, user updated
+- [x] Tests: 4 new unit test classes + `AuthFlowIT`, `PasswordResetIT`, `AddressIT`, `AdminCustomerIT` (29 ITs); smoke-tested against local stack
 
 ## Phase 3 — Product Catalog
 
@@ -208,6 +208,10 @@
 | D-12 | Local ports | ✅ Decided | Shifted to avoid other local stacks: Postgres 5442, Redis 6389, Mailpit 1026/8026, Prometheus 9091, Grafana 3002 |
 | D-13 | Test split | ✅ Decided | `*Test` = unit/slice (surefire), `*IT` = Testcontainers integration (failsafe); `./mvnw verify` runs both |
 | D-14 | Threads | ✅ Decided | Virtual threads enabled (`spring.threads.virtual.enabled`) |
+| D-15 | Cross-module events (pre-Kafka) | ✅ Decided | In-process `@Async @TransactionalEventListener(AFTER_COMMIT)`; best effort until the outbox (Phase 9). Events carrying secrets (reset link) stay in-process only |
+| D-16 | Rate limiter | ✅ Decided | `RateLimiter` interface; in-memory Bucket4j now, Redis-backed when multi-instance (Phase 9) |
+| D-17 | Actuator in prod | ✅ Decided | Separate internal port 8081; health/info/prometheus public on it, other endpoints ADMIN |
+| D-18 | Refresh-token CSRF | ✅ Decided | Cookie is SameSite=Strict + path-scoped; frontend will call the API same-site (Next.js rewrites `/api`) |
 
 ---
 
@@ -218,3 +222,4 @@
 | 2026-09-28 | 0 | Read PRD + TRD. Created PROGRESS.md tracker. |
 | 2026-09-28 | 0 | Decisions D-02..D-11 made. git init + .gitignore. Wrote docs/ (architecture, erd, domain-model, api, pages, infra) and CLAUDE.md. Phase 0 done. |
 | 2026-09-28 | 1 | Scaffolded backend (Boot 3.5.16, Modulith 1.4.13, springdoc 2.8.17), common module, V1 migration, compose Postgres. Fixed ProblemDetail enrichment for framework exceptions (405/415). `./mvnw verify` green; smoke-tested running app. |
+| 2026-09-28 | 2 | Committed Phase 1 (`7a56fde`). Built auth module (JWT RS256, rotating refresh cookies, RBAC, profile, addresses, password reset, admin customers, bootstrap admin), common security/rate-limit/audit, notification module (email), Mailpit. Fixed CHAR/CITEXT schema-validation mapping. `./mvnw verify` green (31 unit + 35 IT); local smoke test incl. Mailpit delivery. |

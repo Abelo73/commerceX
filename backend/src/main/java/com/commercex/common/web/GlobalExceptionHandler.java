@@ -3,6 +3,8 @@ package com.commercex.common.web;
 import com.commercex.common.error.BusinessException;
 import com.commercex.common.error.ErrorCode;
 import com.commercex.common.error.FieldViolation;
+import com.commercex.common.error.ValidationException;
+import com.commercex.common.ratelimit.RateLimitExceededException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.net.URI;
@@ -10,6 +12,7 @@ import java.util.Comparator;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -17,6 +20,8 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -38,6 +43,41 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     ProblemDetail handleBusiness(BusinessException ex, HttpServletRequest request) {
         return problem(ex.code(), ex.getMessage(), request.getRequestURI());
+    }
+
+    @ExceptionHandler(ValidationException.class)
+    ProblemDetail handleValidation(ValidationException ex, HttpServletRequest request) {
+        ProblemDetail body = problem(ex.code(), ex.getMessage(), request.getRequestURI());
+        body.setProperty("errors", ex.violations());
+        return body;
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    ResponseEntity<ProblemDetail> handleRateLimit(RateLimitExceededException ex, HttpServletRequest request) {
+        return ResponseEntity.status(ex.code().status())
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.retryAfterSeconds()))
+                .body(problem(ex.code(), ex.getMessage(), request.getRequestURI()));
+    }
+
+    /** Method-security denials ({@code @PreAuthorize}) surface here, not in the filter chain. */
+    @ExceptionHandler(AccessDeniedException.class)
+    ProblemDetail handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        return problem(ErrorCode.FORBIDDEN, "You do not have permission to access this resource",
+                request.getRequestURI());
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    ProblemDetail handleAuthentication(AuthenticationException ex, HttpServletRequest request) {
+        return problem(ErrorCode.UNAUTHENTICATED, "Authentication required", request.getRequestURI());
+    }
+
+    /** Safety net for races the application checks could not prevent (e.g. unique constraints). */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ProblemDetail handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
+        log.warn("Data integrity violation on {} {}: {}", request.getMethod(), request.getRequestURI(),
+                ex.getMostSpecificCause().getMessage());
+        return problem(ErrorCode.CONFLICT, "The request conflicts with the current state of the resource",
+                request.getRequestURI());
     }
 
     @ExceptionHandler(ConstraintViolationException.class)

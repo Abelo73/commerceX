@@ -73,3 +73,35 @@ springdoc:
 logging:
   pattern:
     correlation: "[%X{correlationId:-}] "
+
+commercex:
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:commercex}
+      access-token-ttl: 15m
+      # PEM keys, required in prod. Set via env, e.g.
+      #   COMMERCEX_SECURITY_JWT_PRIVATEKEYLOCATION=file:/run/secrets/jwt-private.pem
+      #   COMMERCEX_SECURITY_JWT_PUBLICKEYLOCATION=file:/run/secrets/jwt-public.pem
+      allow-ephemeral-keys: false
+    cors:
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  auth:
+    refresh-token-ttl: 30d
+    password-reset-ttl: 30m
+    frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:3000}
+    refresh-cookie:
+      name: cx_refresh
+      path: /api/v1/auth
+      secure: true
+      same-site: Strict
+    rate-limits:
+      login-per-ip: { capacity: 30, period: 1m }
+      login-per-email: { capacity: 10, period: 15m }
+      register-per-ip: { capacity: 10, period: 1h }
+      password-reset-per-ip: { capacity: 10, period: 1h }
+      password-reset-per-email: { capacity: 3, period: 1h }
+    bootstrap-admin:
+      email: ${ADMIN_EMAIL:}
+      password: ${ADMIN_PASSWORD:}
+  notification:
+    from: ${MAIL_FROM:no-reply@commercex.local}

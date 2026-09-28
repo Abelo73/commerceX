@@ -1,4 +1,20 @@
 # Local development against infra/docker-compose.yml
+commercex:
+  security:
+    jwt:
+      allow-ephemeral-keys: true   # tokens are invalidated on restart; fine for dev
+  auth:
+    refresh-cookie:
+      secure: false                # plain http://localhost
+    bootstrap-admin:
+      email: admin@commercex.local
+      password: CommerceX-Admin-2026!
+
+spring:
+  mail:
+    host: localhost
+    port: 1026                     # Mailpit, UI at http://localhost:8026
+
 management:
   endpoint:
     health:

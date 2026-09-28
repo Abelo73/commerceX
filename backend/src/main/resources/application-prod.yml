@@ -4,6 +4,13 @@ logging:
     format:
       console: logstash
 
+server:
+  forward-headers-strategy: native   # trust X-Forwarded-* from the load balancer only
+
+management:
+  server:
+    port: 8081                       # actuator on an internal-only port
+
 springdoc:
   swagger-ui:
     enabled: false

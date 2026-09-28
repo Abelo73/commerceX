@@ -24,7 +24,10 @@ cd frontend && npm run dev
 
 ## Gotchas
 - VS Code's Java extension also compiles into `backend/target`; if Maven reports missing class files, run `./mvnw clean verify`.
-- Postgres runs on host port **5442** (not 5432).
+- Postgres runs on host port **5442** (not 5432). Mailpit UI: http://localhost:8026.
+- `local` profile bootstraps admin `admin@commercex.local` / `CommerceX-Admin-2026!` and uses an ephemeral JWT key (tokens die on restart).
+- New public endpoints must be added to `common/security/SecurityConfig` (deny-by-default).
+- Integration tests must extend `AbstractIntegrationTest` without extra context-changing annotations, so all share one context + container.
 
 ## Non-negotiable rules
 - Build in phase order; one vertical slice at a time. Don't rewrite unrelated code.
