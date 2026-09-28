@@ -1,0 +1,23 @@
+# Local dependencies for CommerceX. Ports are shifted (+10) to avoid clashing with other local stacks.
+name: commercex
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: commercex-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-commercex}
+      POSTGRES_USER: ${DB_USERNAME:-commercex}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-commercex}
+    ports:
+      - "${DB_PORT:-5442}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:

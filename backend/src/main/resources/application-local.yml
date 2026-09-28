@@ -1,0 +1,9 @@
+# Local development against infra/docker-compose.yml
+management:
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.commercex: DEBUG

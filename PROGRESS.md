@@ -13,16 +13,16 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 1 — Spring Boot Foundation (next) |
-| **Current task** | Phase 0 complete — ready to scaffold backend |
+| **Current phase** | Phase 2 — Authentication + Users (next) |
+| **Current task** | Phase 1 complete — `./mvnw verify` green (22 unit + 5 integration tests) |
 | **Last updated** | 2026-09-28 |
-| **Repo state** | Git initialized (`main`, no commits yet). Specs + docs + CLAUDE.md. No application code yet |
-| **Blockers** | None |
+| **Repo state** | Git `main`. Backend foundation in `backend/`, Postgres in `infra/docker-compose.yml`. Phase 1 not yet committed |
+| **Blockers** | None. Note: app startup ~70 s on dev machine — revisit in Phase 13 performance review |
 
 ### Next up
-1. Initial git commit (awaiting user go-ahead)
-2. Scaffold Spring Boot 3.x / Java 21 Maven project in `backend/` (Phase 1)
-3. `infra/docker-compose.yml` with PostgreSQL, Flyway baseline, error handling, Actuator, OpenAPI, Testcontainers base test
+1. Commit Phase 1 (awaiting user go-ahead)
+2. Phase 2: `V2__create_users.sql` (users, roles, addresses, refresh/reset tokens)
+3. Phase 2: Spring Security + RS256 JWT, register/login/refresh/logout
 
 ---
 
@@ -31,7 +31,7 @@
 | # | Phase | Status |
 |---|---|---|
 | 0 | Product + Architecture | `[x]` |
-| 1 | Spring Boot Foundation | `[ ]` |
+| 1 | Spring Boot Foundation | `[x]` |
 | 2 | Authentication + Users | `[ ]` |
 | 3 | Product Catalog | `[ ]` |
 | 4 | Inventory | `[ ]` |
@@ -55,7 +55,7 @@
 - [x] Write TRD ([TRD.md](TRD.md))
 - [x] Create progress tracker (this file)
 - [x] `git init`, `.gitignore`
-- [ ] Initial commit (awaiting user go-ahead)
+- [x] Initial commit (`a1a4309`)
 - [x] Repository layout (`backend/`, `frontend/`, `infra/`, `docs/`)
 - [x] [`docs/architecture.md`](docs/architecture.md) — module map, module boundaries, layering rules
 - [x] [`docs/erd.md`](docs/erd.md) — PostgreSQL ERD (users, products, variants, inventory, carts, orders, payments, coupons, reviews, outbox)
@@ -67,16 +67,17 @@
 
 ## Phase 1 — Spring Boot Foundation
 
-- [ ] Spring Boot 3.x / Java 21 project in `backend/`
-- [ ] Package structure: `common` + one package per module (auth, catalog, category, inventory, cart, checkout, order, payment, promotion, review, wishlist, notification, admin)
-- [ ] `docker-compose.yml` with PostgreSQL (Redis/Kafka added when needed)
-- [ ] Flyway wired, `V1__baseline.sql`
-- [ ] Global error handling (RFC 7807 Problem Details) + validation errors
-- [ ] Correlation ID filter + structured logging
-- [ ] Actuator: health, info, metrics
-- [ ] OpenAPI / Swagger UI
-- [ ] Testcontainers base integration test class
-- [ ] Module boundary test (Spring Modulith `verify()`)
+- [x] Spring Boot 3.5.16 / Java 21 Maven project in `backend/` (with `./mvnw`)
+- [x] Package structure: `com.commercex.common` (open Modulith module). Business module packages are created in their own phase
+- [x] `infra/docker-compose.yml` with PostgreSQL 17 on port 5442 (Redis/Kafka added when needed)
+- [x] Flyway wired, `V1__baseline.sql` (citext, `idempotency_keys`, `audit_log`)
+- [x] Global error handling (RFC 7807) with `code`, `correlationId`, field `errors[]`; no internals leaked on 500
+- [x] Correlation ID filter (validated against log injection) + logstash JSON logs in `prod` profile
+- [x] Actuator: health (+ liveness/readiness), info (build), metrics, prometheus
+- [x] OpenAPI `/v3/api-docs` + Swagger UI `/swagger-ui.html` (disabled in `prod`)
+- [x] Testcontainers: `AbstractIntegrationTest`, `*IT` via failsafe; `TestCommerceXApplication` for `spring-boot:test-run`
+- [x] Module boundary test (Spring Modulith `verify()`)
+- [x] `Money` value object (minor units, half-up percentage, overflow-safe) + `PageResponse`
 
 ## Phase 2 — Authentication + Users
 
@@ -204,6 +205,9 @@
 | D-09 | Money | ✅ Decided | `BIGINT` minor units + `CHAR(3)` currency, `Money` value object |
 | D-10 | Error format | ✅ Decided | RFC 7807 `ProblemDetail` |
 | D-11 | Frontend structure | ✅ Decided | One Next.js app; storefront + `/admin` route groups |
+| D-12 | Local ports | ✅ Decided | Shifted to avoid other local stacks: Postgres 5442, Redis 6389, Mailpit 1026/8026, Prometheus 9091, Grafana 3002 |
+| D-13 | Test split | ✅ Decided | `*Test` = unit/slice (surefire), `*IT` = Testcontainers integration (failsafe); `./mvnw verify` runs both |
+| D-14 | Threads | ✅ Decided | Virtual threads enabled (`spring.threads.virtual.enabled`) |
 
 ---
 
@@ -213,3 +217,4 @@
 |---|---|---|
 | 2026-09-28 | 0 | Read PRD + TRD. Created PROGRESS.md tracker. |
 | 2026-09-28 | 0 | Decisions D-02..D-11 made. git init + .gitignore. Wrote docs/ (architecture, erd, domain-model, api, pages, infra) and CLAUDE.md. Phase 0 done. |
+| 2026-09-28 | 1 | Scaffolded backend (Boot 3.5.16, Modulith 1.4.13, springdoc 2.8.17), common module, V1 migration, compose Postgres. Fixed ProblemDetail enrichment for framework exceptions (405/415). `./mvnw verify` green; smoke-tested running app. |

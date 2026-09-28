@@ -16,10 +16,15 @@ Production-oriented e-commerce platform. Modular monolith (Spring Boot) + Next.j
 ## Commands
 ```bash
 docker compose -f infra/docker-compose.yml up -d   # dependencies
-cd backend && ./mvnw verify                        # build + all tests
+cd backend && ./mvnw verify                        # unit (*Test) + Testcontainers integration (*IT) tests
+cd backend && ./mvnw spring-boot:test-run          # run app on throwaway Testcontainers Postgres
 cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 cd frontend && npm run dev
 ```
+
+## Gotchas
+- VS Code's Java extension also compiles into `backend/target`; if Maven reports missing class files, run `./mvnw clean verify`.
+- Postgres runs on host port **5442** (not 5432).
 
 ## Non-negotiable rules
 - Build in phase order; one vertical slice at a time. Don't rewrite unrelated code.

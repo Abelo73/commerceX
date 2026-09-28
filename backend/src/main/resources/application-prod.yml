@@ -1,0 +1,11 @@
+# Production: JSON logs (MDC incl. correlationId is included automatically), no API docs UI.
+logging:
+  structured:
+    format:
+      console: logstash
+
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false
