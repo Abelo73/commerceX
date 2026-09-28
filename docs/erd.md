@@ -78,9 +78,10 @@ Price lives on the **variant** (sizes/colors can differ); listing shows the prod
 ### inventory
 | Table | Key columns |
 |---|---|
-| `inventory_items` | variant_id (unique), on_hand, reserved, sold, low_stock_threshold, updated_at. **CHECK (reserved >= 0 AND on_hand >= 0 AND reserved <= on_hand)** |
-| `inventory_reservations` | variant_id, order_id, quantity, status (ACTIVE/COMMITTED/RELEASED), expires_at — unique(order_id, variant_id) |
-| `inventory_movements` | variant_id, type (RESTOCK/ADJUSTMENT/RESERVE/RELEASE/COMMIT/RETURN), quantity_delta, reason, reference, actor_user_id, created_at |
+| `inventory_items` | **variant_id PK** (FK product_variants; missing row = zero stock), on_hand, reserved, sold, low_stock_threshold (default 5), updated_at. **CHECK (on_hand >= 0, reserved >= 0, reserved <= on_hand)** |
+| `inventory_reservations` | order_id (FK added with orders, Phase 6), variant_id, quantity > 0, status (ACTIVE/COMMITTED/RELEASED), expires_at — unique(order_id, variant_id) = idempotency key |
+| `inventory_movements` | append-only ledger: variant_id, type (RESTOCK/ADJUSTMENT/RETURN/RESERVE/RELEASE/COMMIT), on_hand_delta, reserved_delta, on_hand_after, reserved_after, reason, reference (`order:<id>`), actor_user_id, created_at |
+| `products.in_stock`, `product_variants.in_stock` | catalog read-model flags, updated in the same transaction from inventory `StockStatusChanged` events |
 
 `available = on_hand - reserved`.
 
@@ -130,11 +131,12 @@ V1__baseline.sql                     Phase 1 ✅ (idempotency_keys, audit_log)
 V2__create_users.sql                 Phase 2 ✅
 V3__create_categories_brands.sql     Phase 3 ✅
 V4__create_products.sql              Phase 3 ✅
-V5__create_inventory.sql             Phase 4
-V6__create_carts_wishlist.sql        Phase 5
-V7__create_orders.sql                Phase 6
-V8__create_payments.sql              Phase 7
-V9__create_coupons.sql               Phase 8
-V10__create_reviews.sql              Phase 8
-V11__create_outbox.sql               Phase 9
+V5__create_inventory.sql             Phase 4 ✅
+V6__catalog_stock_flags.sql          Phase 4 ✅
+V7__create_carts_wishlist.sql        Phase 5
+V8__create_orders.sql                Phase 6
+V9__create_payments.sql              Phase 7
+V10__create_coupons.sql              Phase 8
+V11__create_reviews.sql              Phase 8
+V12__create_outbox.sql               Phase 9
 ```

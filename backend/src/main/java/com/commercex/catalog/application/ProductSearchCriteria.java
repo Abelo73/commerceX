@@ -14,6 +14,7 @@ public record ProductSearchCriteria(
         Long minPriceMinor,
         Long maxPriceMinor,
         Double minRating,
+        boolean inStockOnly,
         ProductSort sort,
         int page,
         int size) {

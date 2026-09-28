@@ -67,6 +67,9 @@ class PostgresProductSearch implements ProductSearch {
             where.add("p.rating_avg >= :minRating");
             params.addValue("minRating", c.minRating());
         }
+        if (c.inStockOnly()) {
+            where.add("p.in_stock");
+        }
         String whereSql = " WHERE " + String.join(" AND ", where);
         String from = " FROM products p LEFT JOIN brands b ON b.id = p.brand_id";
 
@@ -89,7 +92,7 @@ class PostgresProductSearch implements ProductSearch {
 
         String sql = """
                 SELECT p.id, p.slug, p.name, p.short_description, p.currency, p.min_price_minor,
-                       p.rating_avg, p.review_count, p.category_id, p.published_at,
+                       p.rating_avg, p.review_count, p.in_stock, p.category_id, p.published_at,
                        b.name AS brand_name, b.slug AS brand_slug,
                        cheapest.compare_at_price_minor, img.url AS image_url, img.alt_text AS image_alt
                 """ + from + """
@@ -118,6 +121,7 @@ class PostgresProductSearch implements ProductSearch {
                 rs.getObject("compare_at_price_minor", Long.class),
                 rs.getBigDecimal("rating_avg"),
                 rs.getInt("review_count"),
+                rs.getBoolean("in_stock"),
                 rs.getLong("category_id"),
                 rs.getString("brand_name"),
                 rs.getString("brand_slug"),

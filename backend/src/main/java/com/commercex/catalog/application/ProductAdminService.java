@@ -95,6 +95,7 @@ public class ProductAdminService {
         Product product = Product.create(properties.currency(), details(command, slug), brandName(brand), now);
         product.syncVariants(command.variants(), now);
         product = products.saveAndFlush(product);
+        variants.refreshProductInStock(product.getId(), null);
         auditLog.record(actorId, "PRODUCT_CREATED", "product", product.getId(), Map.of("slug", slug));
         return view(product);
     }
@@ -115,6 +116,7 @@ public class ProductAdminService {
         product.updateDetails(details(command, slug), brandName(brand), now);
         product.syncVariants(command.variants(), now);
         products.flush();
+        variants.refreshProductInStock(id, null);
         auditLog.record(actorId, "PRODUCT_UPDATED", "product", id, Map.of("slug", slug));
         return view(product);
     }

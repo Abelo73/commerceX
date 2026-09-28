@@ -88,6 +88,10 @@ public class Product {
     @Column(name = "search_keywords")
     private String searchKeywords;
 
+    /** Any active variant in stock. Maintained via SQL from inventory events; read-only here. */
+    @Column(name = "in_stock", insertable = false, updatable = false)
+    private boolean inStock;
+
     @Column(name = "published_at")
     private Instant publishedAt;
 
@@ -326,6 +330,10 @@ public class Product {
 
     public int getReviewCount() {
         return reviewCount;
+    }
+
+    public boolean isInStock() {
+        return inStock;
     }
 
     public Instant getPublishedAt() {

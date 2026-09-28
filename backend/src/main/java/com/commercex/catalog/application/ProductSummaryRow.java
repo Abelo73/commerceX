@@ -14,6 +14,7 @@ public record ProductSummaryRow(
         Long compareAtPriceMinor,
         BigDecimal ratingAvg,
         int reviewCount,
+        boolean inStock,
         long categoryId,
         String brandName,
         String brandSlug,

@@ -17,6 +17,8 @@ import com.commercex.category.CategoryRef;
 import com.commercex.common.error.NotFoundException;
 import com.commercex.common.error.ValidationException;
 import com.commercex.common.web.MoneyResponse;
+import com.commercex.inventory.InventoryApi;
+import com.commercex.inventory.StockLevel;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -33,17 +35,19 @@ public class ProductQueryService {
     private final ProductRepository products;
     private final BrandRepository brands;
     private final CategoryApi categories;
+    private final InventoryApi inventory;
 
     ProductQueryService(ProductSearch search, ProductRepository products, BrandRepository brands,
-            CategoryApi categories) {
+            CategoryApi categories, InventoryApi inventory) {
         this.search = search;
         this.products = products;
         this.brands = brands;
         this.categories = categories;
+        this.inventory = inventory;
     }
 
     public record SearchParams(String q, String category, List<String> brands, Long minPrice, Long maxPrice,
-            Double minRating, String sort, int page, int size) {
+            Double minRating, boolean inStock, String sort, int page, int size) {
     }
 
     @Transactional(readOnly = true)
@@ -64,7 +68,8 @@ public class ProductQueryService {
                 : params.brands().stream().map(b -> b.trim().toLowerCase(Locale.ROOT)).toList();
 
         Page<ProductSummaryRow> rows = search.search(new ProductSearchCriteria(params.q(), categoryIds, brandSlugs,
-                params.minPrice(), params.maxPrice(), params.minRating(), sort, params.page(), params.size()));
+                params.minPrice(), params.maxPrice(), params.minRating(), params.inStock(), sort, params.page(),
+                params.size()));
 
         Map<Long, CategoryRef> categoryRefs = categories.findByIds(
                 rows.getContent().stream().map(ProductSummaryRow::categoryId).distinct().toList());
@@ -72,7 +77,7 @@ public class ProductQueryService {
                 r.id(), r.slug(), r.name(), r.shortDescription(),
                 MoneyResponse.of(r.priceMinor(), r.currency()),
                 MoneyResponse.of(r.compareAtPriceMinor(), r.currency()),
-                r.ratingAvg(), r.reviewCount(),
+                r.ratingAvg(), r.reviewCount(), r.inStock(),
                 r.brandSlug() == null ? null : new BrandRef(r.brandName(), r.brandSlug()),
                 CategorySummary.from(categoryRefs.get(r.categoryId())),
                 r.imageUrl() == null ? null : new ImageView(r.imageUrl(), r.imageAlt())));
@@ -87,16 +92,20 @@ public class ProductQueryService {
         CategorySummary category = categories.findById(p.getCategoryId()).map(CategorySummary::from).orElse(null);
         ProductVariant cheapest = p.cheapestActiveVariant();
         List<String> optionNames = p.getOptionNames();
+        List<ProductVariant> active = p.activeVariants();
+        Map<Long, StockLevel> stock = inventory.stockLevels(active.stream().map(ProductVariant::getId).toList());
+        boolean anyInStock = stock.values().stream().anyMatch(level -> level.available() > 0);
 
         return new ProductDetailView(
                 p.getId(), p.getSlug(), p.getName(), p.getShortDescription(), p.getDescription(),
                 MoneyResponse.of(p.getMinPriceMinor(), p.getCurrency()),
                 cheapest == null ? null : MoneyResponse.of(cheapest.getCompareAtPriceMinor(), p.getCurrency()),
-                p.getRatingAvg(), p.getReviewCount(), brand, category,
+                p.getRatingAvg(), p.getReviewCount(), anyInStock, brand, category,
                 p.activeOptionValues().entrySet().stream().map(e -> new OptionView(e.getKey(), e.getValue())).toList(),
-                p.activeVariants().stream().map(v -> new VariantView(v.getId(), v.getSku(), v.getOptionValues(),
+                active.stream().map(v -> new VariantView(v.getId(), v.getSku(), v.getOptionValues(),
                         v.label(optionNames), MoneyResponse.of(v.getPriceMinor(), p.getCurrency()),
-                        MoneyResponse.of(v.getCompareAtPriceMinor(), p.getCurrency()))).toList(),
+                        MoneyResponse.of(v.getCompareAtPriceMinor(), p.getCurrency()),
+                        stock.get(v.getId()).availability().name())).toList(),
                 p.getImages().stream().map(ImageView::from).toList(),
                 p.getTags().stream().sorted().toList(),
                 p.getPublishedAt());

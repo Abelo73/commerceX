@@ -43,9 +43,9 @@ GET /categories                            🌐  active tree (Cache-Control: pub
 GET /brands                                🌐  active brands
 GET /products?q=&category=&brand=&minPrice=&maxPrice=&minRating=&sort=&page=&size=   🌐  (60 s cache)
       q: websearch syntax ("quoted", or, -exclude); category: slug incl. subcategories;
-      brand: slug(s); prices in minor units; sort: relevance|newest|price_asc|price_desc|rating;
-      size ≤ 100. inStock filter arrives with inventory (Phase 4)
-GET /products/{slug}                       🌐  published only: options, active variants, images, tags
+      brand: slug(s); prices in minor units; inStock=true; sort: relevance|newest|price_asc|price_desc|rating;
+      size ≤ 100
+GET /products/{slug}                       🌐  published only: options, active variants (availability IN_STOCK|LOW_STOCK|OUT_OF_STOCK — exact counts hidden), images, tags
 GET /products/{slug}/reviews               🌐  approved only
 ```
 
@@ -91,9 +91,11 @@ PUT    /admin/products/{id}                🛠📦  full replace; requires `ver
 POST   /admin/products/{id}/publish|unpublish|archive   🛠📦
 GET/POST /admin/categories, PUT/DELETE /admin/categories/{id}   🛠📦  PUT requires `version`; max depth 4; no cycles
 GET/POST /admin/brands, PUT/DELETE /admin/brands/{id}           🛠📦  PUT requires `version`
-GET    /admin/inventory?lowStock=true      🛠🚚
-POST   /admin/inventory/{variantId}/adjustments   🛠🚚
-GET    /admin/inventory/{variantId}/movements     🛠🚚
+GET    /admin/inventory?lowStock=&page=&size=      🛠🚚  lowest availability first
+GET    /admin/inventory/{variantId}                🛠🚚
+POST   /admin/inventory/{variantId}/adjustments    🛠🚚  { type: RESTOCK|RETURN|ADJUSTMENT, quantity (signed), reason } — never below reserved
+PUT    /admin/inventory/{variantId}/threshold      🛠🚚  { lowStockThreshold }
+GET    /admin/inventory/{variantId}/movements      🛠🚚  ledger, newest first
 GET    /admin/orders?status=               🛠🚚
 POST   /admin/orders/{orderNumber}/transitions    🛠🚚  { toStatus, reason }
 POST   /admin/payments/{id}/refunds        🛠   Idempotency-Key

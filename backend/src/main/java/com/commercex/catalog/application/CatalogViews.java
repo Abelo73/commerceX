@@ -50,6 +50,7 @@ public final class CatalogViews {
             MoneyResponse compareAtPrice,
             BigDecimal rating,
             int reviewCount,
+            boolean inStock,
             BrandRef brand,
             CategorySummary category,
             ImageView image) {
@@ -58,8 +59,9 @@ public final class CatalogViews {
     public record OptionView(String name, List<String> values) {
     }
 
+    /** {@code availability}: IN_STOCK | LOW_STOCK | OUT_OF_STOCK (exact counts are not exposed). */
     public record VariantView(long id, String sku, Map<String, String> options, String label, MoneyResponse price,
-            MoneyResponse compareAtPrice) {
+            MoneyResponse compareAtPrice, String availability) {
     }
 
     public record ProductDetailView(
@@ -72,6 +74,7 @@ public final class CatalogViews {
             MoneyResponse compareAtPrice,
             BigDecimal rating,
             int reviewCount,
+            boolean inStock,
             BrandRef brand,
             CategorySummary category,
             List<OptionView> options,

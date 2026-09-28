@@ -42,7 +42,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     ProblemDetail handleBusiness(BusinessException ex, HttpServletRequest request) {
-        return problem(ex.code(), ex.getMessage(), request.getRequestURI());
+        ProblemDetail body = problem(ex.code(), ex.getMessage(), request.getRequestURI());
+        if (!ex.details().isEmpty()) {
+            body.setProperty("details", ex.details());
+        }
+        return body;
     }
 
     @ExceptionHandler(ValidationException.class)

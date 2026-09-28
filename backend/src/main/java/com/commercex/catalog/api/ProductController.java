@@ -54,12 +54,14 @@ class ProductController {
             @RequestParam(required = false) @PositiveOrZero Long minPrice,
             @RequestParam(required = false) @PositiveOrZero Long maxPrice,
             @RequestParam(required = false) @DecimalMin("0") @DecimalMax("5") Double minRating,
+            @Parameter(description = "Only products with at least one variant in stock")
+            @RequestParam(defaultValue = "false") boolean inStock,
             @Parameter(description = "relevance | newest | price_asc | price_desc | rating")
             @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") @Min(0) @Max(10_000) int page,
             @RequestParam(defaultValue = "24") @Min(1) @Max(100) int size) {
         var result = productQueryService.search(
-                new SearchParams(q, category, brand, minPrice, maxPrice, minRating, sort, page, size));
+                new SearchParams(q, category, brand, minPrice, maxPrice, minRating, inStock, sort, page, size));
         return ResponseEntity.ok().cacheControl(PUBLIC_SHORT).body(PageResponse.from(result, view -> view));
     }
 

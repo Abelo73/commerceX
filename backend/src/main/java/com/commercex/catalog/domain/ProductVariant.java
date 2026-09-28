@@ -48,6 +48,10 @@ public class ProductVariant {
     @Column(name = "is_active", nullable = false)
     private boolean active;
 
+    /** Maintained from inventory events; read-only here so entity updates never overwrite it. */
+    @Column(name = "in_stock", insertable = false, updatable = false)
+    private boolean inStock;
+
     @Column(nullable = false)
     private int position;
 
@@ -122,6 +126,10 @@ public class ProductVariant {
 
     public boolean isActive() {
         return active;
+    }
+
+    public boolean isInStock() {
+        return inStock;
     }
 
     public int getPosition() {

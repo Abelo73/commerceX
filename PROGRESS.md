@@ -13,16 +13,16 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 4 — Inventory (next) |
-| **Current task** | Phase 3 complete — `./mvnw verify` green (45 unit + 56 integration tests) |
+| **Current phase** | Phase 5 — Cart + Wishlist (next) |
+| **Current task** | Phase 4 complete — `./mvnw verify` green (46 unit + 75 integration tests) |
 | **Last updated** | 2026-09-28 |
-| **Repo state** | Git `main`, Phase 2 = `16d8b15`. Phase 3 (category + catalog modules, V3–V4) not yet committed |
+| **Repo state** | Git `main`, Phase 3 = `c0b89ef`. Phase 4 (inventory module, V5–V6) not yet committed |
 | **Blockers** | None. Note: app startup varied 17–70 s on dev machine — revisit in Phase 13 performance review |
 
 ### Next up
-1. Commit Phase 3 (awaiting user go-ahead)
-2. Phase 4: `V5__create_inventory.sql` (inventory_items with CHECK constraints, reservations, movements)
-3. Phase 4: atomic conditional-UPDATE reservation + concurrency test; add `inStock` filter/availability to catalog
+1. Commit Phase 4 (awaiting user go-ahead)
+2. Phase 5: `V7__create_carts_wishlist.sql`; `CatalogApi` (purchasable variant lookup) for cart validation
+3. Phase 5: guest + user carts (merge on login), server-side pricing, wishlist
 
 ---
 
@@ -34,7 +34,7 @@
 | 1 | Spring Boot Foundation | `[x]` |
 | 2 | Authentication + Users | `[x]` |
 | 3 | Product Catalog | `[x]` |
-| 4 | Inventory | `[ ]` |
+| 4 | Inventory | `[x]` |
 | 5 | Cart + Wishlist | `[ ]` |
 | 6 | Checkout + Orders | `[ ]` |
 | 7 | Payments | `[ ]` |
@@ -105,12 +105,13 @@
 
 ## Phase 4 — Inventory
 
-- [ ] Per-variant stock: available / reserved / sold
-- [ ] Stock adjustments + inventory history
-- [ ] Reservation + release
-- [ ] Concurrency control: atomic conditional `UPDATE` + `CHECK` constraints (D-02)
-- [ ] Low-stock threshold + query
-- [ ] **Concurrency test: N buyers vs. stock = 1 → exactly one succeeds**
+- [x] Per-variant stock: on_hand / reserved / sold (available = on_hand − reserved), DB CHECK constraints
+- [x] Admin adjustments (RESTOCK/RETURN/ADJUSTMENT, never below reserved) + append-only movement ledger
+- [x] `InventoryApi`: reserve (all-or-nothing, sorted, idempotent per order) / commit / release — `MANDATORY` transaction
+- [x] Concurrency control: atomic conditional `UPDATE … RETURNING` + `CHECK` constraints (D-02)
+- [x] Low-stock threshold per variant, admin low-stock report, `LowStockReached` event (consumer in Phase 9)
+- [x] **Concurrency tests: 50 buyers vs. stock 1 → exactly 1; 50 vs. 10 → exactly 10; opposing multi-line orders → no deadlock; CHECK blocks bypass. Mutation-tested.**
+- [x] Catalog integration: `in_stock` flags via `StockStatusChanged`, `inStock` filter, per-variant availability on product detail
 
 ## Phase 5 — Cart + Wishlist
 
@@ -217,6 +218,9 @@
 | D-21 | Variant lifecycle | ✅ Decided | Variants never deleted (deactivated); identity = SKU, globally unique |
 | D-22 | Admin edit concurrency | ✅ Decided | Client sends `version` on PUT; mismatch → 409 (no lost updates) |
 | D-23 | Store currency | ✅ Decided | Single currency from `commercex.catalog.currency` (USD) |
+| D-24 | Inventory ↔ catalog dependency | ✅ Decided | Catalog depends on `InventoryApi`; inventory never depends on catalog. Stock flags flow via synchronous in-transaction `StockStatusChanged` events (zero-crossings only) |
+| D-25 | Reservation expiry owner | ✅ Decided | Order module (Phase 6) cancels expired orders and releases; inventory never auto-releases |
+| D-26 | Public stock exposure | ✅ Decided | Customers see IN_STOCK / LOW_STOCK / OUT_OF_STOCK, not exact counts |
 
 ---
 
@@ -229,3 +233,4 @@
 | 2026-09-28 | 1 | Scaffolded backend (Boot 3.5.16, Modulith 1.4.13, springdoc 2.8.17), common module, V1 migration, compose Postgres. Fixed ProblemDetail enrichment for framework exceptions (405/415). `./mvnw verify` green; smoke-tested running app. |
 | 2026-09-28 | 2 | Committed Phase 1 (`7a56fde`). Built auth module (JWT RS256, rotating refresh cookies, RBAC, profile, addresses, password reset, admin customers, bootstrap admin), common security/rate-limit/audit, notification module (email), Mailpit. Fixed CHAR/CITEXT schema-validation mapping. `./mvnw verify` green (31 unit + 35 IT); local smoke test incl. Mailpit delivery. |
 | 2026-09-28 | 3 | Committed Phase 2 (`16d8b15`). Built category + catalog modules (V3–V4), FTS search, admin CRUD with optimistic locking, public catalog API. `./mvnw verify` green (45 unit + 56 IT); local smoke test. |
+| 2026-09-28 | 4 | Committed Phase 3 (`c0b89ef`). Built inventory module (V5–V6): atomic reservations, ledger, admin adjustments/thresholds, catalog stock flags + availability. Concurrency suite passes and was mutation-tested. `./mvnw verify` green (46 unit + 75 IT). |

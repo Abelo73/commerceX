@@ -60,6 +60,14 @@ Why this over the alternatives:
 - Multi-line orders reserve variants **in ascending `variant_id` order** to avoid deadlocks.
 
 Required test: 50 concurrent threads buy the last unit → exactly 1 succeeds, `reserved = 1`, 49 get `409 INSUFFICIENT_STOCK`.
+✅ Implemented in `InventoryConcurrencyIT` (plus 10-of-50, opposing-order multi-line deadlock test, and a CHECK-constraint bypass test). Mutation-tested: removing the `WHERE` guard makes the suite fail.
+
+`InventoryApi` (public): `stockLevels`, `reserve`, `commit`, `release`. The three mutations use
+`Propagation.MANDATORY` (they must run inside the order's transaction) and are idempotent per
+`(order_id, variant_id)`. Stock crossing zero publishes `StockStatusChanged` (synchronous, same
+transaction → catalog `in_stock` flags); dropping to the threshold publishes `LowStockReached`.
+Reservation expiry is driven by the order module (it owns order state) — inventory never releases on
+its own, so a late payment can never be committed against stock that was silently given away.
 
 ## Checkout / place order (single transaction)
 
