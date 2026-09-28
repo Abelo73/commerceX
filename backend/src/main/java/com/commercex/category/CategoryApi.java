@@ -17,4 +17,7 @@ public interface CategoryApi {
      * or an empty set when the slug is unknown or inactive.
      */
     Set<Long> activeSubtreeIds(String slug);
+
+    /** IDs of the category and all its descendants, regardless of active state. */
+    Set<Long> subtreeIds(long categoryId);
 }

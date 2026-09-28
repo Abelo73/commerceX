@@ -113,6 +113,12 @@ public class OrderService implements OrderApi {
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<Long> deliveredOrderContaining(long userId, long productId) {
+        return orders.findDeliveredOrderIdsContaining(userId, productId).stream().findFirst();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<OrderRef> ref(long orderId) {
         return orders.findById(orderId).map(OrderService::ref);
     }
@@ -249,6 +255,7 @@ public class OrderService implements OrderApi {
                 MoneyResponse.of(o.getSubtotalMinor(), c), MoneyResponse.of(o.getDiscountMinor(), c),
                 MoneyResponse.of(o.getShippingMinor(), c), MoneyResponse.of(o.getTaxMinor(), c),
                 MoneyResponse.of(o.getTotalMinor(), c),
+                o.getCouponCode(),
                 o.getShippingMethod(), o.getShippingAddress(), o.getCustomerEmail(), o.getPlacedAt(),
                 o.getPaymentDueAt(),
                 o.getHistory().stream().map(h -> new OrderDetails.StatusChange(

@@ -17,6 +17,10 @@ import com.commercex.common.web.MoneyResponse;
 import com.commercex.inventory.InsufficientStockException;
 import com.commercex.inventory.InventoryApi;
 import com.commercex.inventory.StockLevel;
+import com.commercex.promotion.CouponEvaluation;
+import com.commercex.promotion.CouponInvalidException;
+import com.commercex.promotion.DiscountLine;
+import com.commercex.promotion.PromotionApi;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -42,16 +46,19 @@ public class CartService implements CartApi {
     private final CartRepository carts;
     private final CatalogApi catalog;
     private final InventoryApi inventory;
+    private final PromotionApi promotions;
     private final RateLimiter rateLimiter;
     private final CartProperties properties;
     private final Clock clock;
     private final String currency;
 
-    CartService(CartRepository carts, CatalogApi catalog, InventoryApi inventory, RateLimiter rateLimiter,
-            CartProperties properties, Clock clock, @Value("${commercex.catalog.currency}") String currency) {
+    CartService(CartRepository carts, CatalogApi catalog, InventoryApi inventory, PromotionApi promotions,
+            RateLimiter rateLimiter, CartProperties properties, Clock clock,
+            @Value("${commercex.catalog.currency}") String currency) {
         this.carts = carts;
         this.catalog = catalog;
         this.inventory = inventory;
+        this.promotions = promotions;
         this.rateLimiter = rateLimiter;
         this.properties = properties;
         this.clock = clock;
@@ -62,7 +69,7 @@ public class CartService implements CartApi {
 
     @Transactional(readOnly = true)
     public CartView view(CartOwner owner) {
-        return existingCart(owner).map(this::render).orElseGet(() -> render(List.of()));
+        return existingCart(owner).map(cartId -> render(cartId, owner)).orElseGet(this::emptyView);
     }
 
     @Transactional
@@ -91,7 +98,7 @@ public class CartService implements CartApi {
         carts.addQuantity(cartId, variantId, quantity).orElseThrow(() -> new ValidationException("quantity",
                 "at most " + CartRepository.MAX_QUANTITY_PER_LINE + " per product"));
         carts.touch(cartId, guestExpiry());
-        return new CartResult(render(cartId), issuedToken);
+        return new CartResult(render(cartId, owner), issuedToken);
     }
 
     @Transactional
@@ -105,7 +112,7 @@ public class CartService implements CartApi {
         requireStock(variantId, quantity);
         carts.setQuantity(cartId, variantId, quantity);
         carts.touch(cartId, guestExpiry());
-        return render(cartId);
+        return render(cartId, owner);
     }
 
     @Transactional
@@ -115,13 +122,39 @@ public class CartService implements CartApi {
             throw new NotFoundException("Cart item", variantId);
         }
         carts.touch(cartId, guestExpiry());
-        return render(cartId);
+        return render(cartId, owner);
     }
 
     @Transactional
     public CartView clear(CartOwner owner) {
-        existingCart(owner).ifPresent(carts::clear);
-        return render(List.of());
+        existingCart(owner).ifPresent(cartId -> {
+            carts.clear(cartId);
+            carts.setCoupon(cartId, null);
+        });
+        return emptyView();
+    }
+
+    /** Applies a code only if it qualifies for the cart right now (422 with the reason otherwise). */
+    @Transactional
+    public CartView applyCoupon(CartOwner owner, String code) {
+        long cartId = existingCart(owner).orElseThrow(() -> new BusinessException(ErrorCode.CHECKOUT_NOT_READY,
+                "Add items to your cart before applying a code"));
+        Priced priced = price(carts.lines(cartId));
+        CouponEvaluation evaluation = promotions.evaluate(code, userId(owner), priced.discountLines(),
+                priced.subtotal().amountMinor());
+        if (!evaluation.valid()) {
+            throw new CouponInvalidException(evaluation);
+        }
+        carts.setCoupon(cartId, evaluation.code());
+        carts.touch(cartId, guestExpiry());
+        return render(cartId, owner);
+    }
+
+    @Transactional
+    public CartView removeCoupon(CartOwner owner) {
+        Optional<Long> cartId = existingCart(owner);
+        cartId.ifPresent(id -> carts.setCoupon(id, null));
+        return cartId.map(id -> render(id, owner)).orElseGet(this::emptyView);
     }
 
     /**
@@ -135,7 +168,7 @@ public class CartService implements CartApi {
                 : carts.findGuestCart(SecureTokens.sha256(guestToken));
         long userCart = carts.getOrCreateUserCart(userId);
         guestCart.ifPresent(guest -> carts.mergeInto(guest, userCart));
-        return render(userCart);
+        return render(userCart, new CartOwner.User(userId));
     }
 
     // ---- CartApi ---------------------------------------------------------------------------------
@@ -155,24 +188,25 @@ public class CartService implements CartApi {
     @Override
     @Transactional
     public void clearUserCart(long userId) {
-        carts.findUserCart(userId).ifPresent(carts::clear);
+        carts.findUserCart(userId).ifPresent(cartId -> {
+            carts.clear(cartId);
+            carts.setCoupon(cartId, null);
+        });
     }
 
-    // ---- internals -------------------------------------------------------------------------------
-
-    private Optional<Long> existingCart(CartOwner owner) {
-        return switch (owner) {
-            case CartOwner.User user -> carts.findUserCart(user.userId());
-            case CartOwner.Guest guest -> carts.findGuestCart(SecureTokens.sha256(guest.token()));
-            case CartOwner.Anonymous anonymous -> Optional.empty();
-        };
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<String> userCartCoupon(long userId) {
+        return carts.findUserCart(userId).flatMap(carts::coupon);
     }
 
-    private CartView render(long cartId) {
-        return render(carts.lines(cartId));
+    // ---- pricing ---------------------------------------------------------------------------------
+
+    private record Priced(List<CartView.Line> lines, Money subtotal, int itemCount, boolean allOk,
+            List<DiscountLine> discountLines) {
     }
 
-    private CartView render(List<CartLine> lines) {
+    private Priced price(List<CartLine> lines) {
         List<Long> ids = lines.stream().map(CartLine::variantId).toList();
         Map<Long, VariantSnapshot> variants = catalog.variants(ids);
         Map<Long, StockLevel> stock = inventory.stockLevels(ids);
@@ -181,6 +215,7 @@ public class CartService implements CartApi {
         int itemCount = 0;
         boolean allOk = !lines.isEmpty();
         List<CartView.Line> rendered = new ArrayList<>();
+        List<DiscountLine> discountLines = new ArrayList<>();
         for (CartLine line : lines) {
             VariantSnapshot v = variants.get(line.variantId());
             StockLevel level = stock.get(line.variantId());
@@ -205,6 +240,7 @@ public class CartService implements CartApi {
                 if (issue == null) {
                     subtotal = subtotal.plus(total);
                     itemCount += line.quantity();
+                    discountLines.add(new DiscountLine(v.productId(), v.categoryId(), total.amountMinor()));
                 }
             }
             allOk &= issue == null;
@@ -220,7 +256,41 @@ public class CartService implements CartApi {
                     v == null ? null : MoneyResponse.of(v.compareAtPriceMinor(), v.currency()),
                     lineTotal, issue, available));
         }
-        return new CartView(rendered, itemCount, MoneyResponse.of(subtotal), allOk);
+        return new Priced(rendered, subtotal, itemCount, allOk, discountLines);
+    }
+
+    private CartView render(long cartId, CartOwner owner) {
+        Priced priced = price(carts.lines(cartId));
+        CartView.AppliedCoupon coupon = null;
+        long discount = 0;
+        Optional<String> code = carts.coupon(cartId);
+        if (code.isPresent()) {
+            CouponEvaluation evaluation = promotions.evaluate(code.get(), userId(owner), priced.discountLines(),
+                    priced.subtotal().amountMinor());
+            discount = evaluation.valid() ? evaluation.discountMinor() : 0;
+            coupon = new CartView.AppliedCoupon(evaluation.code(), evaluation.valid(), money(discount),
+                    evaluation.reason(), evaluation.message());
+        }
+        return new CartView(priced.lines(), priced.itemCount(), MoneyResponse.of(priced.subtotal()), coupon,
+                money(discount), money(priced.subtotal().amountMinor() - discount), priced.allOk());
+    }
+
+    private CartView emptyView() {
+        return new CartView(List.of(), 0, money(0), null, money(0), money(0), false);
+    }
+
+    // ---- internals -------------------------------------------------------------------------------
+
+    private Optional<Long> existingCart(CartOwner owner) {
+        return switch (owner) {
+            case CartOwner.User user -> carts.findUserCart(user.userId());
+            case CartOwner.Guest guest -> carts.findGuestCart(SecureTokens.sha256(guest.token()));
+            case CartOwner.Anonymous anonymous -> Optional.empty();
+        };
+    }
+
+    private static Long userId(CartOwner owner) {
+        return owner instanceof CartOwner.User user ? user.userId() : null;
     }
 
     private VariantSnapshot purchasable(long variantId) {
@@ -250,6 +320,10 @@ public class CartService implements CartApi {
         if (quantity < 1 || quantity > CartRepository.MAX_QUANTITY_PER_LINE) {
             throw new ValidationException("quantity", "must be between 1 and " + CartRepository.MAX_QUANTITY_PER_LINE);
         }
+    }
+
+    private MoneyResponse money(long amountMinor) {
+        return new MoneyResponse(amountMinor, currency);
     }
 
     private Instant guestExpiry() {

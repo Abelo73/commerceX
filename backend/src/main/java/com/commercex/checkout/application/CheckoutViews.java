@@ -26,6 +26,7 @@ public final class CheckoutViews {
             MoneyResponse shipping,
             MoneyResponse tax,
             MoneyResponse total,
+            String couponCode,
             String shippingMethod,
             List<ShippingOption> shippingOptions,
             boolean ready,

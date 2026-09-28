@@ -11,7 +11,17 @@ public record CartView(
         List<Line> lines,
         int itemCount,
         MoneyResponse subtotal,
+        AppliedCoupon coupon,
+        MoneyResponse discount,
+        MoneyResponse total,
         boolean checkoutReady) {
+
+    /**
+     * The applied code is kept even when it stops qualifying (e.g. items removed below the minimum), so the
+     * customer sees why: {@code valid=false}, zero discount, and a message. Shipping is added at checkout.
+     */
+    public record AppliedCoupon(String code, boolean valid, MoneyResponse discount, String reason, String message) {
+    }
 
     /** UNAVAILABLE: no longer sold. OUT_OF_STOCK: none left. INSUFFICIENT_STOCK: fewer left than requested. */
     public enum Issue { UNAVAILABLE, OUT_OF_STOCK, INSUFFICIENT_STOCK }

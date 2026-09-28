@@ -46,7 +46,7 @@ GET /products?q=&category=&brand=&minPrice=&maxPrice=&minRating=&sort=&page=&siz
       brand: slug(s); prices in minor units; inStock=true; sort: relevance|newest|price_asc|price_desc|rating;
       size ≤ 100
 GET /products/{slug}                       🌐  published only: options, active variants (availability IN_STOCK|LOW_STOCK|OUT_OF_STOCK — exact counts hidden), images, tags
-GET /products/{slug}/reviews               🌐  approved only
+GET /products/{slug}/reviews?sort=NEWEST|HIGHEST|LOWEST   🌐  { summary {average, count, distribution}, reviews (approved, author "Ada L.") }
 ```
 
 ### Cart & wishlist
@@ -57,7 +57,9 @@ PATCH  /cart/items/{variantId}             🌐👤  { quantity }
 DELETE /cart/items/{variantId}             🌐👤
 DELETE /cart                               🌐👤  clear
 POST   /cart/merge                         👤    X-Cart-Token → folded into user cart (summed, capped at 99), idempotent
-PUT    /cart/coupon, DELETE /cart/coupon   🌐👤  (Phase 8)
+PUT    /cart/coupon                        🌐👤  { code } → 422 COUPON_INVALID {details.reason} if it does not qualify
+DELETE /cart/coupon                        🌐👤
+      Cart response adds `coupon {code, valid, discount, reason, message}`, `discount`, `total` (before shipping)
       Cart response: lines priced live from the catalog; line `issue` = UNAVAILABLE | OUT_OF_STOCK |
       INSUFFICIENT_STOCK (+ availableQuantity), excluded from subtotal; `checkoutReady`.
       Limits: 99 per line, 50 lines; stock checked on add/update (not reserved until checkout).
@@ -81,7 +83,9 @@ POST /orders/{orderNumber}/cancel          👤  only while unpaid; releases sto
 POST /orders/{orderNumber}/payments        👤  { paymentToken } + Idempotency-Key → 201 new / 200 same key; status PENDING | REQUIRES_ACTION (nextActionUrl) | SUCCEEDED | FAILED
                                                 409 ORDER_NOT_PAYABLE | PAYMENT_IN_PROGRESS
 GET  /orders/{orderNumber}/payments        👤  own payments
-POST /reviews                              👤  verified purchasers only
+POST /reviews                              👤  { productId, rating 1–5, title, comment } — delivered purchasers only (403 otherwise); → PENDING
+PUT  /reviews/{id}, DELETE /reviews/{id}   👤  own reviews; edits return to moderation
+GET  /me/reviews                           👤
 ```
 
 ### Payments (provider-facing)
@@ -112,8 +116,9 @@ GET    /admin/orders/{orderNumber}/payments    🛠🚚  payments with provider 
 POST   /admin/payments/{id}/refunds        🛠   { amount?, reason } + Idempotency-Key; 409 REFUND_NOT_ALLOWED (e.g. SHIPPED)
 GET    /admin/customers?q=                 🛠   email search, paginated
 PATCH  /admin/customers/{id}               🛠   { status?, roles? } — cannot lock self / drop own ADMIN
-CRUD   /admin/coupons                      🛠
-GET    /admin/reviews?status=PENDING       🛠
-POST   /admin/reviews/{id}/approve|reject  🛠
+GET/POST /admin/coupons, GET/PUT /admin/coupons/{id}    🛠  PERCENTAGE value in basis points; restrictions productIds/categoryIds; PUT requires `version`; deactivate instead of delete
+GET    /admin/reviews?status=PENDING       🛠   oldest first
+POST   /admin/reviews/{id}/approve         🛠
+POST   /admin/reviews/{id}/reject          🛠   { reason }
 GET    /admin/audit-log                    🛠
 ```

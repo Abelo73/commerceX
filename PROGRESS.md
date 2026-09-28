@@ -13,16 +13,16 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 8 — Promotions + Reviews (next) |
-| **Current task** | Phase 7 complete — `./mvnw verify` green (57 unit + 133 integration tests) |
+| **Current phase** | Phase 9 — Kafka + Outbox + Notifications (next) |
+| **Current task** | Phase 8 complete — `./mvnw verify` green (62 unit + 145 integration tests) |
 | **Last updated** | 2026-09-28 |
-| **Repo state** | Git `main`, Phase 6 = `b9d40ef`. Phase 7 (payment module, V9) not yet committed |
+| **Repo state** | Git `main`, Phase 7 = `21e3222`. Phase 8 (promotion + review modules, V10–V11) not yet committed |
 | **Blockers** | None. Note: app startup varied 17–70 s on dev machine — revisit in Phase 13 performance review |
 
 ### Next up
-1. Commit Phase 7 (awaiting user go-ahead)
-2. Phase 8: `V10__create_coupons.sql` — coupons + redemptions, apply in cart/quote/checkout (conditional `used_count` update)
-3. Phase 8: `V11__create_reviews.sql` — verified-purchase reviews, moderation, rating aggregation
+1. Commit Phase 8 (awaiting user go-ahead)
+2. Phase 9: `V12__create_outbox.sql`, transactional outbox + publisher, Kafka (KRaft) in docker-compose + Testcontainers
+3. Phase 9: order/payment events → notification emails (idempotent consumers), Redis rate limiter + catalog cache
 
 ---
 
@@ -38,7 +38,7 @@
 | 5 | Cart + Wishlist | `[x]` |
 | 6 | Checkout + Orders | `[x]` |
 | 7 | Payments | `[x]` |
-| 8 | Promotions + Reviews | `[ ]` |
+| 8 | Promotions + Reviews | `[x]` |
 | 9 | Kafka + Outbox + Notifications | `[ ]` |
 | 10 | Premium Next.js Storefront | `[ ]` |
 | 11 | Admin Dashboard | `[ ]` |
@@ -142,11 +142,11 @@
 
 ## Phase 8 — Promotions + Reviews
 
-- [ ] Coupons: %/fixed, min amount, date window, usage limits, per-customer limits, product/category restrictions
-- [ ] Coupon application in cart + checkout
-- [ ] Reviews: verified purchase only, PENDING/APPROVED/REJECTED moderation
-- [ ] Product rating + review count aggregation
-- [ ] Tests (pricing/promotion unit tests)
+- [x] Coupons: %/fixed (cap), min amount, date window, usage limits (atomic, concurrency + mutation tested), per-customer limits, product/category(+sub) restrictions; admin CRUD
+- [x] Coupon in cart (apply/remove, live re-validation with reason), quote and checkout (redeemed in the order transaction; released on cancel)
+- [x] Reviews: delivered purchasers only, one per product, edit → re-moderation, PENDING/APPROVED/REJECTED, public list + summary
+- [x] Product rating + review count aggregation (advisory lock per product; concurrent approvals tested)
+- [x] Tests: `CouponRulesTest`; `PromotionIT` (7), `ReviewIT` (5)
 
 ## Phase 9 — Kafka + Outbox + Notifications
 
@@ -235,6 +235,10 @@
 | D-37 | Late payment | ✅ Decided | `OrderApi.markPaid` returns false for non-payable orders → automatic full refund; order stays CANCELLED |
 | D-38 | Refund restocking | ✅ Decided | Not automatic; staff inspect returns and use inventory RETURN adjustments |
 | D-39 | Real provider | ⏳ Open | Only the mock adapter exists; pick provider (e.g. Stripe) and implement its adapter + webhook translation before launch |
+| D-40 | Coupon usage concurrency | ✅ Decided | Atomic conditional `used_count` increment (also serializes per-customer checks) inside the order transaction; CHECK constraint as backstop |
+| D-41 | Coupons & cancellations | ✅ Decided | Cancelled orders release their redemption; refunds do not |
+| D-42 | Review eligibility | ✅ Decided | Requires a DELIVERED order containing the product; moderation before publishing |
+| D-43 | Rating updates | ✅ Decided | Review module calls `CatalogApi.updateRating` (one-way dependency) after recomputing under an advisory lock |
 
 ---
 
@@ -251,3 +255,4 @@
 | 2026-09-28 | 5 | Committed Phase 4 (`aae8e82`). Built cart + wishlist modules (V7), `CatalogApi`, scheduling. Fixed untyped timestamp param in CASE. `./mvnw verify` green (46 unit + 89 IT). |
 | 2026-09-28 | 6 | Committed Phase 5 (`80a8d18`). Built idempotency infra, auth `AccountApi`, order module (V8, state machine, expiry job) and checkout module. Fixed checkout reporting "empty cart" when all items were unavailable. `./mvnw verify` green (50 unit + 112 IT); concurrency ITs repeated 3×. |
 | 2026-09-28 | 7 | Committed Phase 6 (`b9d40ef`). Built payment module (V9): provider port + mock, payments/refunds outside DB tx, signed deduplicated webhooks, reconciliation, auto-refund of late payments. `OrderApi.markPaid` now returns boolean. `./mvnw verify` green (57 unit + 133 IT). |
+| 2026-09-28 | 8 | Committed Phase 7 (`21e3222`). Built promotion module (V10: coupons, rules, atomic redemption, cart/checkout integration, release on cancel) and review module (V11: eligibility, moderation, rating aggregation). Removed a catalog↔review module cycle. Coupon concurrency test mutation-tested. `./mvnw verify` green (62 unit + 145 IT). |

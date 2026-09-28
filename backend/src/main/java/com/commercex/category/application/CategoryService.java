@@ -81,6 +81,12 @@ public class CategoryService implements CategoryApi {
         return new HashSet<>(categories.activeSubtreeIdsBySlug(slug));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Set<Long> subtreeIds(long categoryId) {
+        return new HashSet<>(categories.subtreeIds(categoryId));
+    }
+
     // ---- admin -------------------------------------------------------------------------------
 
     @Transactional(readOnly = true)

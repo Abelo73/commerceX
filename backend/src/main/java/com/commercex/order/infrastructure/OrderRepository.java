@@ -2,6 +2,7 @@ package com.commercex.order.infrastructure;
 
 import com.commercex.order.domain.Order;
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +19,10 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     Optional<Order> findByOrderNumberAndUserId(String orderNumber, long userId);
 
     Optional<Order> findByOrderNumber(String orderNumber);
+
+    @Query("select distinct o.id from Order o join o.items i where o.userId = :userId and i.productId = :productId "
+            + "and o.status = com.commercex.order.domain.OrderStatus.DELIVERED")
+    List<Long> findDeliveredOrderIdsContaining(long userId, long productId);
 
     Page<Order> findByUserId(long userId, Pageable pageable);
 

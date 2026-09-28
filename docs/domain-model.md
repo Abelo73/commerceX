@@ -79,9 +79,11 @@ POST /api/v1/orders  { addressId, shippingMethod, expectedTotal }  + Idempotency
   2. Load cart; every line purchasable (else 409 CHECKOUT_NOT_READY with problems)
   3. Re-price from the catalog (never trust client), shipping rules, tax placeholder (0, tax-inclusive)
   4. total == expectedTotal? (else 409 PRICE_CHANGED — the customer never pays an unseen amount)
-  5. [Phase 8] validate + redeem coupon (conditional UPDATE on used_count)
+  5. cart coupon re-evaluated (422 COUPON_INVALID if it no longer qualifies); discount in the total
   6. Insert order + item snapshots + history (PENDING_PAYMENT, payment_due_at = now + 30 min)
   7. Reserve inventory (sorted conditional UPDATEs; 409 INSUFFICIENT_STOCK rolls everything back)
+  7b. Redeem coupon: UPDATE coupons SET used_count+1 WHERE used_count < usage_limit (row lock) → per-customer
+      count → rules → redemption row. Last use taken concurrently → 422, whole order rolls back
   8. Clear cart; mark idempotency key COMPLETED with the response
   COMMIT  (on any failure: key released so the client may retry with it)
   ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -127,3 +129,19 @@ reconcile (every 60 s, items older than 2 min):
 `OrderPlaced`, `OrderPaid`, `OrderCancelled`, `OrderShipped`, `OrderDelivered`, `OrderRefunded`, `PaymentFailed`, `InventoryLow`, `ReviewSubmitted`, `UserRegistered`, `PasswordResetRequested`.
 
 Consumers must be idempotent (dedup by event ID).
+
+## Promotions
+
+`CouponRules.evaluate` is a pure function (unit-tested): active → window (ends_at exclusive) → global limit →
+per-customer limit → minimum order (full subtotal) → eligible lines (product/category restrictions,
+categories expanded to subcategories) → discount (percentage half-up, capped by max_discount, never above the
+eligible amount). The cart stores the code and shows `valid=false` with a reason when it stops qualifying.
+Cancelling an order releases its redemption and gives the use back (same transaction, via `OrderStatusChanged`).
+Concurrency: 5 customers racing for a single-use coupon → exactly one order (tested, mutation-tested).
+
+## Reviews
+
+Eligibility: a DELIVERED order of the customer containing the product; one review per product. New and edited
+reviews are PENDING until an ADMIN approves or rejects them; only APPROVED reviews are public. After any change
+to approved reviews the product's average/count is recomputed under a per-product advisory lock
+(`pg_advisory_xact_lock`) and stored via `CatalogApi.updateRating` (review → catalog only; no module cycle).

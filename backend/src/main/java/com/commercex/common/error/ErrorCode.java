@@ -32,6 +32,7 @@ public enum ErrorCode {
     INVALID_STATE_TRANSITION(HttpStatus.CONFLICT, "Invalid state transition"),
     IDEMPOTENCY_KEY_IN_PROGRESS(HttpStatus.CONFLICT, "Request with this idempotency key is in progress"),
     IDEMPOTENCY_KEY_MISMATCH(HttpStatus.UNPROCESSABLE_ENTITY, "Idempotency key reused with a different request"),
+    COUPON_INVALID(HttpStatus.UNPROCESSABLE_ENTITY, "Coupon cannot be applied"),
     UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type"),
     RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "Too many requests"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");

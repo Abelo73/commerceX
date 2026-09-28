@@ -9,10 +9,12 @@ import com.commercex.catalog.domain.ProductStatus;
 import com.commercex.catalog.domain.ProductVariant;
 import com.commercex.catalog.infrastructure.ProductRepository;
 import com.commercex.catalog.infrastructure.ProductVariantRepository;
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +39,7 @@ class CatalogApiService implements CatalogApi {
         for (ProductVariant v : variants.findWithProductByIdIn(variantIds)) {
             Product p = v.getProduct();
             result.put(v.getId(), new VariantSnapshot(
-                    v.getId(), p.getId(), p.getSlug(), p.getName(), v.getSku(), v.label(p.getOptionNames()),
+                    v.getId(), p.getId(), p.getCategoryId(), p.getSlug(), p.getName(), v.getSku(), v.label(p.getOptionNames()),
                     v.getPriceMinor(), v.getCompareAtPriceMinor(), p.getCurrency(), firstImage(p.getImages()),
                     p.getStatus() == ProductStatus.PUBLISHED && v.isActive()));
         }
@@ -54,6 +56,18 @@ class CatalogApiService implements CatalogApi {
                     p.getStatus() == ProductStatus.PUBLISHED));
         }
         return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Long> publishedProductId(String slug) {
+        return products.findBySlugAndStatus(slug, ProductStatus.PUBLISHED).map(Product::getId);
+    }
+
+    @Override
+    @Transactional
+    public void updateRating(long productId, BigDecimal average, int reviewCount) {
+        products.updateRating(productId, average, reviewCount);
     }
 
     private static String firstImage(List<ProductImage> images) {

@@ -15,6 +15,7 @@ public record OrderDetails(
         MoneyResponse shipping,
         MoneyResponse tax,
         MoneyResponse total,
+        String couponCode,
         String shippingMethod,
         OrderAddress shippingAddress,
         String customerEmail,

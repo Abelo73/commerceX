@@ -17,7 +17,8 @@ public record PlaceOrderCommand(
         long taxMinor,
         long totalMinor,
         String shippingMethod,
-        OrderAddress shippingAddress) {
+        OrderAddress shippingAddress,
+        String couponCode) {
 
     public record Line(long variantId, long productId, String productName, String variantLabel, String sku,
             String imageUrl, long unitPriceMinor, int quantity) {

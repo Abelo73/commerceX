@@ -37,4 +37,7 @@ public interface OrderApi {
     Optional<OrderRef> refForCustomer(long userId, String orderNumber);
 
     Optional<OrderRef> refByNumber(String orderNumber);
+
+    /** A DELIVERED order of this customer that contains the product (review eligibility). */
+    Optional<Long> deliveredOrderContaining(long userId, long productId);
 }

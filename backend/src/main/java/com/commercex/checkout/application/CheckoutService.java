@@ -20,6 +20,10 @@ import com.commercex.order.OrderAddress;
 import com.commercex.order.OrderApi;
 import com.commercex.order.OrderDetails;
 import com.commercex.order.PlaceOrderCommand;
+import com.commercex.promotion.CouponEvaluation;
+import com.commercex.promotion.CouponInvalidException;
+import com.commercex.promotion.DiscountLine;
+import com.commercex.promotion.PromotionApi;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -43,16 +47,19 @@ public class CheckoutService {
     private final CatalogApi catalog;
     private final AccountApi accounts;
     private final OrderApi orders;
+    private final PromotionApi promotions;
     private final Idempotency idempotency;
     private final CheckoutProperties properties;
     private final String currency;
 
-    CheckoutService(CartApi cart, CatalogApi catalog, AccountApi accounts, OrderApi orders, Idempotency idempotency,
-            CheckoutProperties properties, @Value("${commercex.catalog.currency}") String currency) {
+    CheckoutService(CartApi cart, CatalogApi catalog, AccountApi accounts, OrderApi orders, PromotionApi promotions,
+            Idempotency idempotency, CheckoutProperties properties,
+            @Value("${commercex.catalog.currency}") String currency) {
         this.cart = cart;
         this.catalog = catalog;
         this.accounts = accounts;
         this.orders = orders;
+        this.promotions = promotions;
         this.idempotency = idempotency;
         this.properties = properties;
         this.currency = currency;
@@ -73,9 +80,17 @@ public class CheckoutService {
                 : shippingMethod(shippingMethodCode);
         long shipping = method.priceFor(priced.subtotal());
         long tax = 0; // Prices are tax-inclusive until a tax provider is integrated.
-        return new Quote(priced.quoteLines(), money(priced.subtotal()), money(0), money(shipping), money(tax),
-                money(priced.subtotal() + shipping + tax), method.code(), shippingOptions(priced.subtotal()),
-                priced.problems().isEmpty(), priced.problems());
+        List<String> problems = new ArrayList<>(priced.problems());
+        CouponEvaluation coupon = cart.userCartCoupon(userId)
+                .map(code -> promotions.evaluate(code, userId, priced.discountLines(), priced.subtotal()))
+                .orElse(null);
+        long discount = coupon != null && coupon.valid() ? coupon.discountMinor() : 0;
+        if (coupon != null && !coupon.valid()) {
+            problems.add("Coupon " + coupon.code() + ": " + coupon.message());
+        }
+        return new Quote(priced.quoteLines(), money(priced.subtotal()), money(discount), money(shipping), money(tax),
+                money(priced.subtotal() - discount + shipping + tax), coupon == null ? null : coupon.code(),
+                method.code(), shippingOptions(priced.subtotal()), problems.isEmpty(), problems);
     }
 
     /** Idempotent per {@code Idempotency-Key}: a retried request returns the originally created order. */
@@ -102,7 +117,18 @@ public class CheckoutService {
         }
         long shipping = method.priceFor(priced.subtotal());
         long tax = 0;
-        long total = priced.subtotal() + shipping + tax;
+        String couponCode = cart.userCartCoupon(userId).orElse(null);
+        long discount = 0;
+        if (couponCode != null) {
+            CouponEvaluation coupon = promotions.evaluate(couponCode, userId, priced.discountLines(),
+                    priced.subtotal());
+            if (!coupon.valid()) {
+                throw new CouponInvalidException(coupon);
+            }
+            couponCode = coupon.code();
+            discount = coupon.discountMinor();
+        }
+        long total = priced.subtotal() - discount + shipping + tax;
         if (total != request.expectedTotal()) {
             throw new BusinessException(ErrorCode.PRICE_CHANGED,
                     "The order total changed; review the updated total before paying",
@@ -110,15 +136,24 @@ public class CheckoutService {
         }
 
         OrderDetails order = orders.place(new PlaceOrderCommand(userId, customer.email(), currency, priced.lines(),
-                priced.subtotal(), 0, shipping, tax, total, method.code(),
+                priced.subtotal(), discount, shipping, tax, total, method.code(),
                 new OrderAddress(address.fullName(), address.line1(), address.line2(), address.city(),
-                        address.region(), address.postalCode(), address.country(), address.phone())));
+                        address.region(), address.postalCode(), address.country(), address.phone()),
+                couponCode));
+        if (couponCode != null) {
+            // Same transaction: if the last use was just taken by someone else, the whole order rolls back.
+            long redeemed = promotions.redeem(couponCode, userId, order.id(), priced.discountLines(),
+                    priced.subtotal());
+            if (redeemed != discount) {
+                throw new BusinessException(ErrorCode.PRICE_CHANGED, "The discount changed; review your order");
+            }
+        }
         cart.clearUserCart(userId);
         return order;
     }
 
     private record Priced(List<PlaceOrderCommand.Line> lines, List<QuoteLine> quoteLines, long subtotal,
-            List<String> problems) {
+            List<String> problems, List<DiscountLine> discountLines) {
     }
 
     private Priced price(long userId) {
@@ -127,6 +162,7 @@ public class CheckoutService {
         List<PlaceOrderCommand.Line> lines = new ArrayList<>();
         List<QuoteLine> quoteLines = new ArrayList<>();
         List<String> problems = new ArrayList<>();
+        List<DiscountLine> discountLines = new ArrayList<>();
         long subtotal = 0;
         for (CartLine line : cartLines) {
             VariantSnapshot v = variants.get(line.variantId());
@@ -140,10 +176,11 @@ public class CheckoutService {
             subtotal = Math.addExact(subtotal, lineTotal);
             lines.add(new PlaceOrderCommand.Line(v.variantId(), v.productId(), v.productName(), v.label(), v.sku(),
                     v.imageUrl(), v.priceMinor(), line.quantity()));
+            discountLines.add(new DiscountLine(v.productId(), v.categoryId(), lineTotal));
             quoteLines.add(new QuoteLine(v.variantId(), v.productName(), v.label(), line.quantity(),
                     money(v.priceMinor()), money(lineTotal), null));
         }
-        return new Priced(lines, quoteLines, subtotal, problems);
+        return new Priced(lines, quoteLines, subtotal, problems, discountLines);
     }
 
     private ShippingMethod shippingMethod(String code) {

@@ -105,7 +105,22 @@ public class CartRepository {
                 SELECT :user, variant_id, quantity, added_at FROM cart_items WHERE cart_id = :guest
                 ON CONFLICT (cart_id, variant_id)
                 DO UPDATE SET quantity = LEAST(cart_items.quantity + EXCLUDED.quantity, :max)""", params);
+        // The user's own coupon wins; otherwise keep the one applied as a guest.
+        jdbc.update("""
+                UPDATE carts SET coupon_code = COALESCE(coupon_code,
+                        (SELECT coupon_code FROM carts WHERE id = :guest))
+                WHERE id = :user""", params);
         jdbc.update("DELETE FROM carts WHERE id = :guest", params);
+    }
+
+    public Optional<String> coupon(long cartId) {
+        return jdbc.queryForList("SELECT coupon_code FROM carts WHERE id = :cartId AND coupon_code IS NOT NULL",
+                new MapSqlParameterSource("cartId", cartId), String.class).stream().findFirst();
+    }
+
+    public void setCoupon(long cartId, String code) {
+        jdbc.update("UPDATE carts SET coupon_code = :code, updated_at = now() WHERE id = :cartId",
+                new MapSqlParameterSource("cartId", cartId).addValue("code", code));
     }
 
     public int deleteExpiredGuestCarts() {

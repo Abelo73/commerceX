@@ -110,14 +110,15 @@ Price lives on the **variant** (sizes/colors can differ); listing shows the prod
 ### promotion
 | Table | Key columns |
 |---|---|
-| `coupons` | code (unique, upper), type (PERCENTAGE/FIXED), value, min_order_minor, starts_at, ends_at, usage_limit, used_count, per_customer_limit, is_active, version |
-| `coupon_products` / `coupon_categories` | restriction join tables |
-| `coupon_redemptions` | coupon_id, user_id, order_id (unique), created_at |
+| `coupons` | code (unique, `^[A-Z0-9_-]{3,32}$`), type (PERCENTAGE in basis points ≤ 10000 / FIXED in minor units), value, max_discount_minor, min_order_minor, starts_at, ends_at (exclusive), usage_limit, used_count (**CHECK ≤ usage_limit**, changed only by atomic SQL), per_customer_limit, is_active, version |
+| `coupon_products` / `coupon_categories` | restrictions; categories include their subcategories |
+| `coupon_redemptions` | coupon_id, user_id, order_id (unique), discount_minor, status ACTIVE/RELEASED (released when the order is cancelled) |
+| `carts.coupon_code`, `orders.coupon_code` | applied code (cart: re-validated on every view; order: snapshot) |
 
 ### review
 | Table | Key columns |
 |---|---|
-| `reviews` | product_id, user_id, order_id, rating (1–5 CHECK), title, comment, verified_purchase, status (PENDING/APPROVED/REJECTED), moderated_by, moderated_at — unique(product_id, user_id) |
+| `reviews` | product_id, user_id, order_id (a DELIVERED order containing the product), author_name ("Ada L."), rating (1–5 CHECK), title, comment, verified_purchase, status (PENDING/APPROVED/REJECTED), rejection_reason, moderated_by/at — unique(product_id, user_id). Approved stats stored on `products.rating_avg/review_count` |
 
 ### common (cross-cutting)
 | Table | Key columns |
@@ -137,7 +138,7 @@ V6__catalog_stock_flags.sql          Phase 4 ✅
 V7__create_carts_wishlist.sql        Phase 5 ✅
 V8__create_orders.sql                Phase 6 ✅
 V9__create_payments.sql              Phase 7 ✅
-V10__create_coupons.sql              Phase 8
-V11__create_reviews.sql              Phase 8
+V10__create_coupons.sql              Phase 8 ✅
+V11__create_reviews.sql              Phase 8 ✅
 V12__create_outbox.sql               Phase 9
 ```

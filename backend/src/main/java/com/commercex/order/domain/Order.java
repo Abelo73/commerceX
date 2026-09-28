@@ -69,6 +69,9 @@ public class Order {
     @Column(name = "shipping_method", nullable = false, updatable = false)
     private String shippingMethod;
 
+    @Column(name = "coupon_code", updatable = false)
+    private String couponCode;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "shipping_address", nullable = false, updatable = false)
     private OrderAddress shippingAddress;
@@ -123,6 +126,7 @@ public class Order {
         order.taxMinor = c.taxMinor();
         order.totalMinor = c.totalMinor();
         order.shippingMethod = c.shippingMethod();
+        order.couponCode = c.couponCode();
         order.shippingAddress = c.shippingAddress();
         order.paymentDueAt = paymentDueAt;
         order.placedAt = now;
@@ -196,6 +200,10 @@ public class Order {
 
     public String getShippingMethod() {
         return shippingMethod;
+    }
+
+    public String getCouponCode() {
+        return couponCode;
     }
 
     public OrderAddress getShippingAddress() {

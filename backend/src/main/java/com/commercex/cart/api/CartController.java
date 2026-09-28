@@ -12,7 +12,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -49,6 +52,9 @@ class CartController {
     }
 
     record QuantityRequest(@Min(1) @Max(99) int quantity) {
+    }
+
+    record CouponRequest(@NotBlank @Size(max = 32) String code) {
     }
 
     /** {@code cartToken} is only present when this response created a new guest cart. */
@@ -96,6 +102,20 @@ class CartController {
     @DeleteMapping
     CartView clear(@AuthenticationPrincipal Jwt jwt, @RequestHeader(value = CART_TOKEN, required = false) String token) {
         return cartService.clear(owner(jwt, token));
+    }
+
+    @PutMapping("/coupon")
+    @Operation(summary = "Apply a coupon code; 422 COUPON_INVALID with the reason when it does not qualify")
+    CartView applyCoupon(@AuthenticationPrincipal Jwt jwt,
+            @RequestHeader(value = CART_TOKEN, required = false) String token,
+            @Valid @RequestBody CouponRequest body) {
+        return cartService.applyCoupon(owner(jwt, token), body.code());
+    }
+
+    @DeleteMapping("/coupon")
+    CartView removeCoupon(@AuthenticationPrincipal Jwt jwt,
+            @RequestHeader(value = CART_TOKEN, required = false) String token) {
+        return cartService.removeCoupon(owner(jwt, token));
     }
 
     @PostMapping("/merge")

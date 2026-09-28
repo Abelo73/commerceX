@@ -8,6 +8,7 @@ package com.commercex.catalog;
 public record VariantSnapshot(
         long variantId,
         long productId,
+        long categoryId,
         String productSlug,
         String productName,
         String sku,
