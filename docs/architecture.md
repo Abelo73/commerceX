@@ -56,7 +56,7 @@ Layering (TRD §4): `api → application → domain ← infrastructure`.
 
 ## Module boundary rules
 
-1. A module may call another module **only through its `application` package** public services (or by consuming its events).
+1. A module's **public API is the set of types in its base package** (e.g. `com.commercex.category.CategoryApi`, `com.commercex.auth.PasswordResetRequested`). Sub-packages (`api`, `application`, `domain`, `infrastructure`) are internal — Spring Modulith fails the build if another module touches them. Other modules call the public interface or consume published events.
 2. No module reads another module's repositories or tables.
 3. Cross-module references are by ID (e.g. `order_items.variant_id`), not JPA associations.
 4. Asynchronous side effects (notifications, analytics) go through domain events → outbox → Kafka (Phase 9). Before Kafka exists, in-process `ApplicationEventPublisher` + `@TransactionalEventListener` is used.

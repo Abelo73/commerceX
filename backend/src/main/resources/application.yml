@@ -103,5 +103,7 @@ commercex:
     bootstrap-admin:
       email: ${ADMIN_EMAIL:}
       password: ${ADMIN_PASSWORD:}
+  catalog:
+    currency: ${STORE_CURRENCY:USD}
   notification:
     from: ${MAIL_FROM:no-reply@commercex.local}

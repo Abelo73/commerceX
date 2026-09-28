@@ -13,16 +13,16 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 3 — Product Catalog (next) |
-| **Current task** | Phase 2 complete — `./mvnw verify` green (31 unit + 35 integration tests) |
+| **Current phase** | Phase 4 — Inventory (next) |
+| **Current task** | Phase 3 complete — `./mvnw verify` green (45 unit + 56 integration tests) |
 | **Last updated** | 2026-09-28 |
-| **Repo state** | Git `main`, Phase 1 = `7a56fde`. Phase 2 (auth + notification modules, V2) not yet committed |
+| **Repo state** | Git `main`, Phase 2 = `16d8b15`. Phase 3 (category + catalog modules, V3–V4) not yet committed |
 | **Blockers** | None. Note: app startup varied 17–70 s on dev machine — revisit in Phase 13 performance review |
 
 ### Next up
-1. Commit Phase 2 (awaiting user go-ahead)
-2. Phase 3: `V3__create_categories_brands.sql`, `V4__create_products.sql` (products, variants, options, images, tags, FTS)
-3. Phase 3: public catalog API (search/filter/sort/paginate) + admin/catalog-manager CRUD
+1. Commit Phase 3 (awaiting user go-ahead)
+2. Phase 4: `V5__create_inventory.sql` (inventory_items with CHECK constraints, reservations, movements)
+3. Phase 4: atomic conditional-UPDATE reservation + concurrency test; add `inStock` filter/availability to catalog
 
 ---
 
@@ -33,7 +33,7 @@
 | 0 | Product + Architecture | `[x]` |
 | 1 | Spring Boot Foundation | `[x]` |
 | 2 | Authentication + Users | `[x]` |
-| 3 | Product Catalog | `[ ]` |
+| 3 | Product Catalog | `[x]` |
 | 4 | Inventory | `[ ]` |
 | 5 | Cart + Wishlist | `[ ]` |
 | 6 | Checkout + Orders | `[ ]` |
@@ -94,14 +94,14 @@
 
 ## Phase 3 — Product Catalog
 
-- [ ] Categories (hierarchical), brands, tags
-- [ ] Products: name, slug, SKU, descriptions, price, compare-at price, currency, published state
-- [ ] Variants + attributes (color, size, …)
-- [ ] Product images
-- [ ] Public listing: search, filter (category, brand, price, rating, availability), sort, pagination
-- [ ] Admin/catalog-manager CRUD
-- [ ] Search abstraction (PostgreSQL FTS now, OpenSearch-ready)
-- [ ] Tests
+- [x] Categories (`category` module: tree, max depth 4, cycle prevention, active-branch public tree), brands, tags
+- [x] Products: name, slug (auto/explicit), descriptions, currency, DRAFT/PUBLISHED/ARCHIVED lifecycle, optimistic `version` on admin edits
+- [x] Variants: global unique SKU, JSONB option values (≤3 options), price/compare-at, matched by SKU on update, deactivated not deleted
+- [x] Product images (ordered URLs + alt text; upload/storage deferred)
+- [x] Public listing: FTS search, filter (category subtree, brand, price, rating), sort (relevance/newest/price/rating), pagination ≤100, Cache-Control. **Availability filter → Phase 4; popularity sort → after orders exist**
+- [x] Admin/catalog-manager CRUD for categories, brands, products (+ publish/unpublish/archive), audited
+- [x] Search abstraction: `ProductSearch` port, `PostgresProductSearch` (generated weighted tsvector + GIN, `websearch_to_tsquery`, bound params, whitelisted ORDER BY)
+- [x] Tests: `ProductTest`, `SlugsTest`; `CategoryIT`, `CatalogAdminIT`, `CatalogSearchIT` (21 ITs); local smoke test
 
 ## Phase 4 — Inventory
 
@@ -212,6 +212,11 @@
 | D-16 | Rate limiter | ✅ Decided | `RateLimiter` interface; in-memory Bucket4j now, Redis-backed when multi-instance (Phase 9) |
 | D-17 | Actuator in prod | ✅ Decided | Separate internal port 8081; health/info/prometheus public on it, other endpoints ADMIN |
 | D-18 | Refresh-token CSRF | ✅ Decided | Cookie is SameSite=Strict + path-scoped; frontend will call the API same-site (Next.js rewrites `/api`) |
+| D-19 | Module public API | ✅ Decided | Types in a module's base package are its API (e.g. `CategoryApi`); sub-packages internal, enforced by Modulith |
+| D-20 | Variant options storage | ✅ Decided | JSONB `option_values` on variants + ordered option names, instead of option/value/join tables |
+| D-21 | Variant lifecycle | ✅ Decided | Variants never deleted (deactivated); identity = SKU, globally unique |
+| D-22 | Admin edit concurrency | ✅ Decided | Client sends `version` on PUT; mismatch → 409 (no lost updates) |
+| D-23 | Store currency | ✅ Decided | Single currency from `commercex.catalog.currency` (USD) |
 
 ---
 
@@ -223,3 +228,4 @@
 | 2026-09-28 | 0 | Decisions D-02..D-11 made. git init + .gitignore. Wrote docs/ (architecture, erd, domain-model, api, pages, infra) and CLAUDE.md. Phase 0 done. |
 | 2026-09-28 | 1 | Scaffolded backend (Boot 3.5.16, Modulith 1.4.13, springdoc 2.8.17), common module, V1 migration, compose Postgres. Fixed ProblemDetail enrichment for framework exceptions (405/415). `./mvnw verify` green; smoke-tested running app. |
 | 2026-09-28 | 2 | Committed Phase 1 (`7a56fde`). Built auth module (JWT RS256, rotating refresh cookies, RBAC, profile, addresses, password reset, admin customers, bootstrap admin), common security/rate-limit/audit, notification module (email), Mailpit. Fixed CHAR/CITEXT schema-validation mapping. `./mvnw verify` green (31 unit + 35 IT); local smoke test incl. Mailpit delivery. |
+| 2026-09-28 | 3 | Committed Phase 2 (`16d8b15`). Built category + catalog modules (V3–V4), FTS search, admin CRUD with optimistic locking, public catalog API. `./mvnw verify` green (45 unit + 56 IT); local smoke test. |

@@ -24,10 +24,7 @@ erDiagram
     products ||--o{ product_variants : has
     products ||--o{ product_images : has
     products ||--o{ product_options : has
-    product_options ||--o{ product_option_values : has
-    product_variants ||--o{ variant_option_values : has
-    product_option_values ||--o{ variant_option_values : used_by
-    products }o--o{ tags : tagged
+    products ||--o{ product_tags : tagged
 
     product_variants ||--|| inventory_items : stock
     inventory_items ||--o{ inventory_movements : ledger
@@ -68,13 +65,13 @@ erDiagram
 |---|---|
 | `categories` | parent_id, name, slug (unique), description, position, is_active |
 | `brands` | name, slug (unique), logo_url |
-| `products` | slug (unique), name, short_description, description, brand_id, category_id, status (DRAFT/PUBLISHED/ARCHIVED), currency, rating_avg NUMERIC(3,2), review_count, search_vector TSVECTOR (GIN), published_at, version |
-| `product_variants` | product_id, sku (unique), price_minor, compare_at_price_minor, is_active, position, version |
-| `product_options` | product_id, name (e.g. Color), position |
-| `product_option_values` | option_id, value (e.g. Black), position |
-| `variant_option_values` | variant_id, option_value_id — PK(both) |
-| `product_images` | product_id, variant_id (nullable), url, alt_text, position |
-| `tags` / `product_tags` | name, slug / product_id, tag_id |
+| `products` | slug (unique), name, short_description, description, brand_id, category_id, status (DRAFT/PUBLISHED/ARCHIVED), currency, min_price_minor (denormalized from active variants), rating_avg NUMERIC(3,2), review_count, search_keywords (brand + tags, app-maintained), search_vector TSVECTOR **generated** from name(A)/keywords(B)/short(C)/description(D) with GIN index, published_at, version |
+| `product_variants` | product_id, sku (unique), **option_values JSONB** (e.g. `{"Color":"Black","Size":"42"}`, GIN index, unique per product), price_minor > 0, compare_at_price_minor > price, is_active, position, version. Never deleted — deactivated |
+| `product_options` | product_id, position, name — ordered option names |
+| `product_images` | product_id, position, url, alt_text |
+| `product_tags` | product_id, tag (lowercase) |
+
+> Design note: option values live as JSONB on variants instead of option/value/join tables. It removes reconciliation logic when admins edit options while keeping combinations unique and filterable.
 
 Price lives on the **variant** (sizes/colors can differ); listing shows the product's min variant price.
 
@@ -129,10 +126,10 @@ Price lives on the **variant** (sizes/colors can differ); listing shows the prod
 ## Planned migrations (by phase)
 
 ```text
-V1__baseline.sql                     Phase 1  (idempotency_keys, audit_log)
-V2__create_users.sql                 Phase 2
-V3__create_categories_brands.sql     Phase 3
-V4__create_products.sql              Phase 3
+V1__baseline.sql                     Phase 1 ✅ (idempotency_keys, audit_log)
+V2__create_users.sql                 Phase 2 ✅
+V3__create_categories_brands.sql     Phase 3 ✅
+V4__create_products.sql              Phase 3 ✅
 V5__create_inventory.sql             Phase 4
 V6__create_carts_wishlist.sql        Phase 5
 V7__create_orders.sql                Phase 6

@@ -39,10 +39,13 @@ DELETE /me/addresses/{id}                  👤
 
 ### Catalog (public)
 ```text
-GET /categories                            🌐  tree
-GET /brands                                🌐
-GET /products?q=&category=&brand=&minPrice=&maxPrice=&minRating=&inStock=&sort=   🌐
-GET /products/{slug}                       🌐  with variants, options, images, availability
+GET /categories                            🌐  active tree (Cache-Control: public, 5 min)
+GET /brands                                🌐  active brands
+GET /products?q=&category=&brand=&minPrice=&maxPrice=&minRating=&sort=&page=&size=   🌐  (60 s cache)
+      q: websearch syntax ("quoted", or, -exclude); category: slug incl. subcategories;
+      brand: slug(s); prices in minor units; sort: relevance|newest|price_asc|price_desc|rating;
+      size ≤ 100. inStock filter arrives with inventory (Phase 4)
+GET /products/{slug}                       🌐  published only: options, active variants, images, tags
 GET /products/{slug}/reviews               🌐  approved only
 ```
 
@@ -81,8 +84,13 @@ POST /payments/webhooks/{provider}         🌐  signature-verified, deduplicate
 ### Admin (`/admin/...`)
 ```text
 GET    /admin/dashboard                    🛠
-CRUD   /admin/products, /variants, /images 🛠📦
-CRUD   /admin/categories, /brands          🛠📦
+GET    /admin/products?status=&q=          🛠📦
+GET    /admin/products/{id}                🛠📦
+POST   /admin/products                     🛠📦  full document incl. variants → DRAFT
+PUT    /admin/products/{id}                🛠📦  full replace; requires `version`; variants matched by SKU, omitted ones deactivated
+POST   /admin/products/{id}/publish|unpublish|archive   🛠📦
+GET/POST /admin/categories, PUT/DELETE /admin/categories/{id}   🛠📦  PUT requires `version`; max depth 4; no cycles
+GET/POST /admin/brands, PUT/DELETE /admin/brands/{id}           🛠📦  PUT requires `version`
 GET    /admin/inventory?lowStock=true      🛠🚚
 POST   /admin/inventory/{variantId}/adjustments   🛠🚚
 GET    /admin/inventory/{variantId}/movements     🛠🚚

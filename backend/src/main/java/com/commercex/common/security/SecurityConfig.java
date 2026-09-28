@@ -46,6 +46,10 @@ class SecurityConfig {
                                 "/api/v1/auth/logout",
                                 "/api/v1/auth/password-reset/request",
                                 "/api/v1/auth/password-reset/confirm").permitAll()
+                        // public catalog
+                        .requestMatchers(GET, "/api/v1/products", "/api/v1/products/**",
+                                "/api/v1/categories", "/api/v1/categories/**",
+                                "/api/v1/brands", "/api/v1/brands/**").permitAll()
                         // operations (prod exposes actuator on a separate, internal port)
                         .requestMatchers(GET, "/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
                         .requestMatchers("/actuator/**").hasRole("ADMIN")
