@@ -22,6 +22,8 @@ public enum ErrorCode {
     EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT, "Email already registered"),
     INSUFFICIENT_STOCK(HttpStatus.CONFLICT, "Insufficient stock"),
     VARIANT_UNAVAILABLE(HttpStatus.CONFLICT, "Product unavailable"),
+    PRICE_CHANGED(HttpStatus.CONFLICT, "Price changed"),
+    CHECKOUT_NOT_READY(HttpStatus.CONFLICT, "Checkout not ready"),
     LIMIT_EXCEEDED(HttpStatus.CONFLICT, "Limit exceeded"),
     INVALID_STATE_TRANSITION(HttpStatus.CONFLICT, "Invalid state transition"),
     IDEMPOTENCY_KEY_IN_PROGRESS(HttpStatus.CONFLICT, "Request with this idempotency key is in progress"),

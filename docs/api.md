@@ -69,12 +69,15 @@ POST   /wishlist/{productId}/move-to-cart  👤  { variantId, quantity } — ato
 
 ### Checkout & orders
 ```text
-GET  /checkout/shipping-methods            👤
-POST /checkout/quote                       👤  server-side totals preview
-POST /orders                               👤  Idempotency-Key
-GET  /orders                               👤  own orders
-GET  /orders/{orderNumber}                 👤  own order + status history
-POST /orders/{orderNumber}/cancel          👤  only while unpaid
+GET  /checkout/shipping-methods            👤  STANDARD (5.99, free ≥ 100.00), EXPRESS (14.99)
+POST /checkout/quote                       👤  { shippingMethod? } → lines, subtotal, shipping, tax, total, options, ready, problems
+POST /orders                               👤  { addressId, shippingMethod, expectedTotal } + Idempotency-Key (8–255 chars)
+                                                → 201 OrderDetails; replay → same body + `Idempotent-Replayed: true`
+                                                409 PRICE_CHANGED | CHECKOUT_NOT_READY | INSUFFICIENT_STOCK | IDEMPOTENCY_KEY_IN_PROGRESS
+                                                422 IDEMPOTENCY_KEY_MISMATCH
+GET  /orders                               👤  own orders (summary, newest first)
+GET  /orders/{orderNumber}                 👤  own order: items, totals, address, status history
+POST /orders/{orderNumber}/cancel          👤  only while unpaid; releases stock
 POST /orders/{orderNumber}/payments        👤  Idempotency-Key
 POST /reviews                              👤  verified purchasers only
 ```
@@ -99,8 +102,9 @@ GET    /admin/inventory/{variantId}                🛠🚚
 POST   /admin/inventory/{variantId}/adjustments    🛠🚚  { type: RESTOCK|RETURN|ADJUSTMENT, quantity (signed), reason } — never below reserved
 PUT    /admin/inventory/{variantId}/threshold      🛠🚚  { lowStockThreshold }
 GET    /admin/inventory/{variantId}/movements      🛠🚚  ledger, newest first
-GET    /admin/orders?status=               🛠🚚
-POST   /admin/orders/{orderNumber}/transitions    🛠🚚  { toStatus, reason }
+GET    /admin/orders?status=&q=            🛠🚚  q = exact order number or customer email
+GET    /admin/orders/{orderNumber}         🛠🚚
+POST   /admin/orders/{orderNumber}/transitions    🛠🚚  { toStatus: PROCESSING|PACKED|SHIPPED|DELIVERED|CANCELLED, reason } — state machine enforced
 POST   /admin/payments/{id}/refunds        🛠   Idempotency-Key
 GET    /admin/customers?q=                 🛠   email search, paginated
 PATCH  /admin/customers/{id}               🛠   { status?, roles? } — cannot lock self / drop own ADMIN

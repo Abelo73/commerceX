@@ -109,5 +109,11 @@ commercex:
     guest-ttl: 30d
     max-lines: 50
     guest-creations-per-ip: { capacity: 30, period: 1h }
+  orders:
+    payment-window: 30m
+  checkout:
+    shipping-methods:
+      - { code: STANDARD, name: Standard, price-minor: 599, free-over-minor: 10000, min-days: 3, max-days: 5 }
+      - { code: EXPRESS, name: Express, price-minor: 1499, min-days: 1, max-days: 2 }
   notification:
     from: ${MAIL_FROM:no-reply@commercex.local}

@@ -95,9 +95,10 @@ Price lives on the **variant** (sizes/colors can differ); listing shows the prod
 ### order
 | Table | Key columns |
 |---|---|
-| `orders` | order_number (unique, `CX-10001`), user_id, status, currency, subtotal_minor, discount_minor, shipping_minor, tax_minor, total_minor, coupon_code, shipping_address JSONB (snapshot), shipping_method, placed_at, version |
-| `order_items` | order_id, variant_id, product_name, variant_label, sku, unit_price_minor, quantity, line_total_minor (snapshots) |
-| `order_status_history` | order_id, from_status, to_status, reason, actor_user_id, created_at |
+| `orders` | order_number (unique, `CX-` + `order_number_seq` from 10001), user_id, customer_email (snapshot), status (CHECK), currency, subtotal/discount/shipping/tax/total_minor — **CHECK total = subtotal − discount + shipping + tax**, shipping_method, shipping_address JSONB (snapshot), payment_due_at (partial index on unpaid), placed_at, version. coupon_code arrives in Phase 8 |
+| `order_items` | order_id, variant_id, product_id, product_name, variant_label, sku, image_url, unit_price_minor, quantity, line_total_minor (**CHECK = unit × qty**), position — immutable snapshots |
+| `order_status_history` | order_id, from_status, to_status, reason, actor_user_id, created_at — append-only |
+| `inventory_reservations.order_id` | FK → orders (added in V8) |
 
 ### payment
 | Table | Key columns |
@@ -134,7 +135,7 @@ V4__create_products.sql              Phase 3 ✅
 V5__create_inventory.sql             Phase 4 ✅
 V6__catalog_stock_flags.sql          Phase 4 ✅
 V7__create_carts_wishlist.sql        Phase 5 ✅
-V8__create_orders.sql                Phase 6
+V8__create_orders.sql                Phase 6 ✅
 V9__create_payments.sql              Phase 7
 V10__create_coupons.sql              Phase 8
 V11__create_reviews.sql              Phase 8

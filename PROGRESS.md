@@ -13,16 +13,16 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 6 — Checkout + Orders (next) |
-| **Current task** | Phase 5 complete — `./mvnw verify` green (46 unit + 89 integration tests) |
+| **Current phase** | Phase 7 — Payments (next) |
+| **Current task** | Phase 6 complete — `./mvnw verify` green (50 unit + 112 integration tests) |
 | **Last updated** | 2026-09-28 |
-| **Repo state** | Git `main`, Phase 4 = `aae8e82`. Phase 5 (cart + wishlist modules, CatalogApi, V7) not yet committed |
+| **Repo state** | Git `main`, Phase 5 = `80a8d18`. Phase 6 (idempotency, checkout + order modules, V8) not yet committed |
 | **Blockers** | None. Note: app startup varied 17–70 s on dev machine — revisit in Phase 13 performance review |
 
 ### Next up
-1. Commit Phase 5 (awaiting user go-ahead)
-2. Phase 6: idempotency-key infrastructure (`idempotency_keys` table from V1), `V8__create_orders.sql`
-3. Phase 6: checkout quote + place order (reserve stock in same tx), order state machine + history, expiry job
+1. Commit Phase 6 (awaiting user go-ahead)
+2. Phase 7: `V9__create_payments.sql`, `PaymentProvider` + `MockPaymentProvider`, create payment outside the order tx
+3. Phase 7: signed + deduplicated webhooks → `OrderApi.markPaid/markPaymentFailed`, reconciliation job, refunds (incl. late payment on a cancelled order)
 
 ---
 
@@ -36,7 +36,7 @@
 | 3 | Product Catalog | `[x]` |
 | 4 | Inventory | `[x]` |
 | 5 | Cart + Wishlist | `[x]` |
-| 6 | Checkout + Orders | `[ ]` |
+| 6 | Checkout + Orders | `[x]` |
 | 7 | Payments | `[ ]` |
 | 8 | Promotions + Reviews | `[ ]` |
 | 9 | Kafka + Outbox + Notifications | `[ ]` |
@@ -123,12 +123,12 @@
 
 ## Phase 6 — Checkout + Orders
 
-- [ ] Checkout flow: customer → address → shipping → payment → review → confirmation
-- [ ] Server-side price recalculation + shipping calculation
-- [ ] Order creation (idempotent, `Idempotency-Key`)
-- [ ] Order state machine + status history (auditable)
-- [ ] Inventory reservation on order, release on cancel/failure/timeout
-- [ ] Tests (state machine unit tests, checkout integration tests)
+- [x] Checkout API: shipping methods, quote, place order (address + shipping + expectedTotal). Payment step → Phase 7
+- [x] Server-side re-pricing, shipping rules (free-over threshold), tax placeholder, `expectedTotal` guard (409 PRICE_CHANGED)
+- [x] Order creation idempotent via reusable `common.idempotency.Idempotency` (claim → business tx + completion atomically → replay/409/422; released on failure; stale takeover)
+- [x] Order state machine (single transition table, exhaustively tested) + append-only history; staff fulfilment transitions; customer cancel
+- [x] Stock: reserve on place, commit on PAID, release on cancel; expiry job (`FOR UPDATE SKIP LOCKED`) cancels overdue unpaid orders
+- [x] Tests: `OrderStatusTest`; `CheckoutIT` (8), `IdempotentCheckoutIT` (6, incl. 8 concurrent duplicates → 1 order), `OrderLifecycleIT` (9, incl. expiry-vs-late-payment race); repeated 3× for flakiness
 
 ## Phase 7 — Payments
 
@@ -225,6 +225,11 @@
 | D-27 | Guest cart identity | ✅ Decided | Opaque `X-Cart-Token` (header, not cookie), stored as SHA-256; bearer user cart takes precedence; explicit `POST /cart/merge` |
 | D-28 | Cart pricing | ✅ Decided | Cart stores no prices; every view is priced from `CatalogApi`; problem lines flagged and excluded, never silently dropped |
 | D-29 | Cart stock | ✅ Decided | Stock checked on add/update but reserved only at checkout (no cart holds) |
+| D-30 | Idempotency store | ✅ Decided | PostgreSQL `idempotency_keys`; key completion commits atomically with the business data; failed attempts release the key; stale IN_PROGRESS (> 2 min) may be taken over; 24 h retention |
+| D-31 | Price-change guard | ✅ Decided | Client must send `expectedTotal`; mismatch → 409 PRICE_CHANGED |
+| D-32 | Order row locking | ✅ Decided | All status changes load the order `FOR UPDATE`; expiry job uses `SKIP LOCKED` |
+| D-33 | Payment window | ✅ Decided | 30 min (`commercex.orders.payment-window`); PAYMENT_FAILED keeps the reservation until then |
+| D-34 | Tax | ⏳ Open | Placeholder 0 (prices tax-inclusive); decide on a tax provider before launch |
 
 ---
 
@@ -239,3 +244,4 @@
 | 2026-09-28 | 3 | Committed Phase 2 (`16d8b15`). Built category + catalog modules (V3–V4), FTS search, admin CRUD with optimistic locking, public catalog API. `./mvnw verify` green (45 unit + 56 IT); local smoke test. |
 | 2026-09-28 | 4 | Committed Phase 3 (`c0b89ef`). Built inventory module (V5–V6): atomic reservations, ledger, admin adjustments/thresholds, catalog stock flags + availability. Concurrency suite passes and was mutation-tested. `./mvnw verify` green (46 unit + 75 IT). |
 | 2026-09-28 | 5 | Committed Phase 4 (`aae8e82`). Built cart + wishlist modules (V7), `CatalogApi`, scheduling. Fixed untyped timestamp param in CASE. `./mvnw verify` green (46 unit + 89 IT). |
+| 2026-09-28 | 6 | Committed Phase 5 (`80a8d18`). Built idempotency infra, auth `AccountApi`, order module (V8, state machine, expiry job) and checkout module. Fixed checkout reporting "empty cart" when all items were unavailable. `./mvnw verify` green (50 unit + 112 IT); concurrency ITs repeated 3×. |

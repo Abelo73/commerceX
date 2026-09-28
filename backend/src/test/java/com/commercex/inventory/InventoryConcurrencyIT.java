@@ -54,7 +54,7 @@ class InventoryConcurrencyIT extends AbstractIntegrationTest {
         long variantId = support.variantWithStock(1);
 
         Outcome outcome = race(BUYERS, i -> () -> {
-            support.reserve(InventoryTestSupport.nextOrderId(), new ReservationLine(variantId, 1));
+            support.reserve(support.newOrderId(), new ReservationLine(variantId, 1));
             return null;
         });
 
@@ -75,7 +75,7 @@ class InventoryConcurrencyIT extends AbstractIntegrationTest {
         long variantId = support.variantWithStock(10);
 
         Outcome outcome = race(BUYERS, i -> () -> {
-            support.reserve(InventoryTestSupport.nextOrderId(), new ReservationLine(variantId, 1));
+            support.reserve(support.newOrderId(), new ReservationLine(variantId, 1));
             return null;
         });
 
@@ -94,7 +94,7 @@ class InventoryConcurrencyIT extends AbstractIntegrationTest {
         Outcome outcome = race(40, i -> () -> {
             ReservationLine first = new ReservationLine(i % 2 == 0 ? a : b, 1);
             ReservationLine second = new ReservationLine(i % 2 == 0 ? b : a, 1);
-            support.reserve(InventoryTestSupport.nextOrderId(), first, second);
+            support.reserve(support.newOrderId(), first, second);
             return null;
         });
 

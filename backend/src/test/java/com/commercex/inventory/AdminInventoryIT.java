@@ -63,7 +63,7 @@ class AdminInventoryIT extends AbstractIntegrationTest {
     @Test
     void cannotRemoveStockThatCustomersHaveReserved() throws Exception {
         long variantId = support.variantWithStock(5);
-        support.reserve(InventoryTestSupport.nextOrderId(), new ReservationLine(variantId, 4));
+        support.reserve(support.newOrderId(), new ReservationLine(variantId, 4));
 
         support.adjust(variantId, "ADJUSTMENT", -2)
                 .andExpect(status().isConflict())
@@ -115,7 +115,7 @@ class AdminInventoryIT extends AbstractIntegrationTest {
     @Test
     void insufficientStockProblemCarriesDetails() throws Exception {
         long variantId = support.variantWithStock(1);
-        support.reserve(InventoryTestSupport.nextOrderId(), new ReservationLine(variantId, 1));
+        support.reserve(support.newOrderId(), new ReservationLine(variantId, 1));
 
         support.adjust(variantId, "ADJUSTMENT", -1)
                 .andExpect(status().isConflict());

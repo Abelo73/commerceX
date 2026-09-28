@@ -50,7 +50,7 @@ class InventoryLifecycleIT extends AbstractIntegrationTest {
         long plenty = support.variantWithStock(5);
         long scarce = support.variantWithStock(1);
 
-        assertThatThrownBy(() -> support.reserve(InventoryTestSupport.nextOrderId(),
+        assertThatThrownBy(() -> support.reserve(support.newOrderId(),
                 new ReservationLine(plenty, 2), new ReservationLine(scarce, 2)))
                 .isInstanceOfSatisfying(InsufficientStockException.class, e -> {
                     assertThat(e.variantId()).isEqualTo(scarce);
@@ -63,7 +63,7 @@ class InventoryLifecycleIT extends AbstractIntegrationTest {
     @Test
     void retriedReservationForSameOrderIsNotDoubleCounted() throws Exception {
         long variantId = support.variantWithStock(5);
-        long orderId = InventoryTestSupport.nextOrderId();
+        long orderId = support.newOrderId();
 
         support.reserve(orderId, new ReservationLine(variantId, 2));
         support.reserve(orderId, new ReservationLine(variantId, 2));
@@ -75,7 +75,7 @@ class InventoryLifecycleIT extends AbstractIntegrationTest {
     void duplicateLinesAreMerged() throws Exception {
         long variantId = support.variantWithStock(5);
 
-        support.reserve(InventoryTestSupport.nextOrderId(), new ReservationLine(variantId, 1),
+        support.reserve(support.newOrderId(), new ReservationLine(variantId, 1),
                 new ReservationLine(variantId, 2));
 
         assertThat(support.reserved(variantId)).isEqualTo(3);
@@ -84,7 +84,7 @@ class InventoryLifecycleIT extends AbstractIntegrationTest {
     @Test
     void commitTurnsReservationIntoSaleExactlyOnce() throws Exception {
         long variantId = support.variantWithStock(5);
-        long orderId = InventoryTestSupport.nextOrderId();
+        long orderId = support.newOrderId();
         support.reserve(orderId, new ReservationLine(variantId, 2));
 
         assertThat(commit(orderId)).isEqualTo(1);
@@ -98,7 +98,7 @@ class InventoryLifecycleIT extends AbstractIntegrationTest {
     @Test
     void releaseReturnsStockExactlyOnceAndBlocksLaterCommit() throws Exception {
         long variantId = support.variantWithStock(5);
-        long orderId = InventoryTestSupport.nextOrderId();
+        long orderId = support.newOrderId();
         support.reserve(orderId, new ReservationLine(variantId, 2));
 
         assertThat(release(orderId, "payment failed")).isEqualTo(1);
@@ -151,12 +151,12 @@ class InventoryLifecycleIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.variants[0].availability").value("IN_STOCK"))
                 .andExpect(jsonPath("$.variants[1].availability").value("OUT_OF_STOCK"));
 
-        long orderId = InventoryTestSupport.nextOrderId();
+        long orderId = support.newOrderId();
         support.reserve(orderId, new ReservationLine(black, 4));
         mvc.perform(get("/api/v1/products/{slug}", slug))
                 .andExpect(jsonPath("$.variants[0].availability").value("LOW_STOCK")); // 4 left, threshold 5
 
-        support.reserve(InventoryTestSupport.nextOrderId(), new ReservationLine(black, 4));
+        support.reserve(support.newOrderId(), new ReservationLine(black, 4));
         inStockResults(categorySlug, 0);
 
         tx.executeWithoutResult(s -> inventory.release(orderId, "cancelled"));

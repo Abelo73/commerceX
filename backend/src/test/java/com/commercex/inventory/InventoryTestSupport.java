@@ -12,7 +12,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,9 +20,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** Creates real variants through the catalog API and drives InventoryApi inside transactions. */
 final class InventoryTestSupport {
-
-    /** Fake order IDs; orders do not exist until Phase 6 (no FK yet). */
-    private static final AtomicLong ORDER_IDS = new AtomicLong(System.nanoTime() % 1_000_000_000L);
 
     final CatalogFixtures catalog;
     final AuthApi.Session manager;
@@ -51,8 +47,19 @@ final class InventoryTestSupport {
         return manager.bearer();
     }
 
-    static long nextOrderId() {
-        return ORDER_IDS.incrementAndGet();
+    /**
+     * A bare PENDING_PAYMENT order row to hang reservations on, bypassing checkout. Taking a raw value from
+     * {@code orders_seq} is safe alongside Hibernate's pooled optimizer.
+     */
+    long newOrderId() {
+        return jdbc.queryForObject("""
+                INSERT INTO orders (id, order_number, user_id, customer_email, status, currency, subtotal_minor,
+                                    shipping_minor, total_minor, shipping_method, shipping_address, payment_due_at,
+                                    placed_at, created_at, updated_at)
+                VALUES (nextval('orders_seq'), 'T-' || currval('orders_seq'), ?, 'test@example.com',
+                        'PENDING_PAYMENT', 'USD', 0, 0, 0, 'STANDARD', '{}', now() + interval '1 day',
+                        now(), now(), now())
+                RETURNING id""", Long.class, manager.userId());
     }
 
     JsonNode publishedProduct(Object... colorPrice) throws Exception {

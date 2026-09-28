@@ -69,23 +69,29 @@ transaction → catalog `in_stock` flags); dropping to the threshold publishes `
 Reservation expiry is driven by the order module (it owns order state) — inventory never releases on
 its own, so a late payment can never be committed against stock that was silently given away.
 
-## Checkout / place order (single transaction)
+## Checkout / place order
 
 ```text
-POST /api/v1/orders  (Idempotency-Key required)
-  1. Idempotency check (return stored response if completed)
-  2. Load cart; validate products published, variants active
-  3. Recalculate prices from DB (never trust client)
-  4. Validate + apply coupon
-  5. Calculate shipping (+ tax placeholder)
-  6. Insert order + items (snapshots)
-  7. Reserve inventory (conditional UPDATE per line)
-  8. Record coupon redemption (conditional UPDATE on used_count)
-  9. Insert payment row (PENDING) + outbox OrderPlaced
- 10. Clear cart; store idempotent response
-COMMIT
-Then (outside the DB transaction): call PaymentProvider.createPayment
+POST /api/v1/orders  { addressId, shippingMethod, expectedTotal }  + Idempotency-Key
+  0. Claim idempotency key            (own tx: replay if COMPLETED, 409 if IN_PROGRESS, 422 if body differs)
+  ── one business transaction ──────────────────────────────────────────────────────────────────
+  1. Customer active; address belongs to customer; shipping method known
+  2. Load cart; every line purchasable (else 409 CHECKOUT_NOT_READY with problems)
+  3. Re-price from the catalog (never trust client), shipping rules, tax placeholder (0, tax-inclusive)
+  4. total == expectedTotal? (else 409 PRICE_CHANGED — the customer never pays an unseen amount)
+  5. [Phase 8] validate + redeem coupon (conditional UPDATE on used_count)
+  6. Insert order + item snapshots + history (PENDING_PAYMENT, payment_due_at = now + 30 min)
+  7. Reserve inventory (sorted conditional UPDATEs; 409 INSUFFICIENT_STOCK rolls everything back)
+  8. Clear cart; mark idempotency key COMPLETED with the response
+  COMMIT  (on any failure: key released so the client may retry with it)
+  ──────────────────────────────────────────────────────────────────────────────────────────────
+  [Phase 7] create payment (outside the transaction) → PaymentProvider
 ```
+
+Order expiry: a job (every 60 s) locks one overdue unpaid order at a time with
+`FOR UPDATE SKIP LOCKED`, cancels it and releases its stock. Payment callbacks lock the same row,
+so exactly one of "late payment" and "expiry" wins (tested); a payment that loses gets a conflict and
+must be refunded (Phase 7).
 
 ## Payment flow
 
