@@ -23,6 +23,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 class PasswordResetIT extends AbstractIntegrationTest {
 
+    private static final String RESET_SUBJECT = "Reset your CommerceX password";
     private static final Pattern TOKEN = Pattern.compile("/reset-password\\?token=([A-Za-z0-9_-]+)");
 
     @Autowired
@@ -47,7 +48,7 @@ class PasswordResetIT extends AbstractIntegrationTest {
 
         requestReset(email).andExpect(status().isAccepted());
 
-        assertThat(emails.awaitMessageTo(email, Duration.ofMillis(500))).isEmpty();
+        assertThat(emails.awaitMessage(email, RESET_SUBJECT, Duration.ofMillis(500))).isEmpty();
     }
 
     @Test
@@ -56,7 +57,7 @@ class PasswordResetIT extends AbstractIntegrationTest {
         AuthApi.Session session = api.register(email);
 
         requestReset(email).andExpect(status().isAccepted());
-        String token = tokenFrom(emails.awaitMessageTo(email, Duration.ofSeconds(5)).orElseThrow());
+        String token = tokenFrom(emails.awaitMessage(email, RESET_SUBJECT, Duration.ofSeconds(5)).orElseThrow());
 
         confirm(token, "short").andExpect(status().isBadRequest());
         confirm(token, "Reset-Password-7").andExpect(status().isNoContent());
@@ -80,10 +81,10 @@ class PasswordResetIT extends AbstractIntegrationTest {
         api.register(email);
 
         requestReset(email).andExpect(status().isAccepted());
-        String first = tokenFrom(emails.awaitMessageTo(email, Duration.ofSeconds(5)).orElseThrow());
+        String first = tokenFrom(emails.awaitMessage(email, RESET_SUBJECT, Duration.ofSeconds(5)).orElseThrow());
         requestReset(email).andExpect(status().isAccepted());
         awaitMessages(email, 2);
-        String second = tokenFrom(emails.sentTo(email).get(1));
+        String second = tokenFrom(emails.sentTo(email, RESET_SUBJECT).get(1));
 
         confirm(first, "Reset-Password-7").andExpect(status().isBadRequest());
         confirm(second, "Reset-Password-7").andExpect(status().isNoContent());
@@ -119,10 +120,10 @@ class PasswordResetIT extends AbstractIntegrationTest {
 
     private void awaitMessages(String email, int count) throws InterruptedException {
         long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
-        while (emails.sentTo(email).size() < count && System.nanoTime() < deadline) {
+        while (emails.sentTo(email, RESET_SUBJECT).size() < count && System.nanoTime() < deadline) {
             Thread.sleep(50);
         }
-        assertThat(emails.sentTo(email)).hasSize(count);
+        assertThat(emails.sentTo(email, RESET_SUBJECT)).hasSize(count);
     }
 
     private static String tokenFrom(EmailMessage message) {

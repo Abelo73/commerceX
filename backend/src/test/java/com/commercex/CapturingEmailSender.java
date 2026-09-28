@@ -21,10 +21,11 @@ public class CapturingEmailSender implements EmailSender {
         sent.add(message);
     }
 
-    public Optional<EmailMessage> awaitMessageTo(String recipient, Duration timeout) {
+    /** Latest message to the recipient whose subject contains {@code subjectPart}. */
+    public Optional<EmailMessage> awaitMessage(String recipient, String subjectPart, Duration timeout) {
         long deadline = System.nanoTime() + timeout.toNanos();
         while (System.nanoTime() < deadline) {
-            Optional<EmailMessage> found = sentTo(recipient).stream().reduce((first, second) -> second);
+            Optional<EmailMessage> found = sentTo(recipient, subjectPart).stream().reduce((first, second) -> second);
             if (found.isPresent()) {
                 return found;
             }
@@ -38,7 +39,9 @@ public class CapturingEmailSender implements EmailSender {
         return Optional.empty();
     }
 
-    public List<EmailMessage> sentTo(String recipient) {
-        return sent.stream().filter(m -> m.to().equalsIgnoreCase(recipient)).toList();
+    public List<EmailMessage> sentTo(String recipient, String subjectPart) {
+        return sent.stream()
+                .filter(m -> m.to().equalsIgnoreCase(recipient) && m.subject().contains(subjectPart))
+                .toList();
     }
 }

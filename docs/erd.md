@@ -124,7 +124,8 @@ Price lives on the **variant** (sizes/colors can differ); listing shows the prod
 | Table | Key columns |
 |---|---|
 | `idempotency_keys` | idem_key, user_id, operation, request_hash, status (IN_PROGRESS/COMPLETED), response_status, response_body JSONB, created_at, expires_at — unique(user_id, operation, idem_key) |
-| `outbox_events` | aggregate_type, aggregate_id, event_type, payload JSONB, created_at, published_at, attempts, last_error — partial index on unpublished |
+| `outbox_events` | event_id (UUID, unique), topic, message_key, event_type, payload JSONB (envelope), created_at, published_at, attempts, next_attempt_at, last_error — partial index on unpublished |
+| `processed_events` | PK(consumer, event_id), processed_at — consumer-side deduplication |
 
 ## Planned migrations (by phase)
 
@@ -140,5 +141,5 @@ V8__create_orders.sql                Phase 6 ✅
 V9__create_payments.sql              Phase 7 ✅
 V10__create_coupons.sql              Phase 8 ✅
 V11__create_reviews.sql              Phase 8 ✅
-V12__create_outbox.sql               Phase 9
+V12__create_outbox.sql               Phase 9 ✅
 ```

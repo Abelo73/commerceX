@@ -12,6 +12,8 @@ import com.commercex.common.text.Slugs;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +36,9 @@ public class BrandService {
             Long version) {
     }
 
+    public static final String ACTIVE_CACHE = "brands.active";
+
+    @Cacheable(cacheNames = ACTIVE_CACHE, key = "'all'")
     @Transactional(readOnly = true)
     public List<BrandView> listActive() {
         return brands.findAllByActiveTrueOrderByNameAsc().stream().map(BrandView::from).toList();
@@ -44,6 +49,7 @@ public class BrandService {
         return brands.findAllByOrderByNameAsc().stream().map(BrandView::from).toList();
     }
 
+    @CacheEvict(cacheNames = ACTIVE_CACHE, allEntries = true)
     @Transactional
     public BrandView create(long actorId, BrandCommand command) {
         String slug = Slugs.resolve(command.slug(), command.name());
@@ -56,6 +62,7 @@ public class BrandService {
         return BrandView.from(brand);
     }
 
+    @CacheEvict(cacheNames = ACTIVE_CACHE, allEntries = true)
     @Transactional
     public BrandView update(long actorId, long id, BrandCommand command) {
         Brand brand = brands.findById(id).orElseThrow(() -> new NotFoundException("Brand", id));
@@ -75,6 +82,7 @@ public class BrandService {
         return BrandView.from(brand);
     }
 
+    @CacheEvict(cacheNames = ACTIVE_CACHE, allEntries = true)
     @Transactional
     public void delete(long actorId, long id) {
         Brand brand = brands.findById(id).orElseThrow(() -> new NotFoundException("Brand", id));

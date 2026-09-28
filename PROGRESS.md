@@ -13,16 +13,16 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 9 — Kafka + Outbox + Notifications (next) |
-| **Current task** | Phase 8 complete — `./mvnw verify` green (62 unit + 145 integration tests) |
+| **Current phase** | Phase 10 — Premium Next.js Storefront (next) |
+| **Current task** | Phase 9 complete — `./mvnw verify` green (63 unit + 153 integration tests); outage behaviour verified on local stack |
 | **Last updated** | 2026-09-28 |
-| **Repo state** | Git `main`, Phase 7 = `21e3222`. Phase 8 (promotion + review modules, V10–V11) not yet committed |
+| **Repo state** | Git `main`, Phase 8 = `4842523`. Phase 9 (outbox, Kafka, notifications, Redis, V12) not yet committed |
 | **Blockers** | None. Note: app startup varied 17–70 s on dev machine — revisit in Phase 13 performance review |
 
 ### Next up
-1. Commit Phase 8 (awaiting user go-ahead)
-2. Phase 9: `V12__create_outbox.sql`, transactional outbox + publisher, Kafka (KRaft) in docker-compose + Testcontainers
-3. Phase 9: order/payment events → notification emails (idempotent consumers), Redis rate limiter + catalog cache
+1. Commit Phase 9 (awaiting user go-ahead)
+2. Phase 10: scaffold `frontend/` (Next.js App Router + TypeScript + Tailwind + Framer Motion + Lucide), design system, API client (same-site `/api` rewrite, refresh-cookie flow, cart token)
+3. Phase 10: home, listing/filters, product detail, cart drawer, checkout, account pages
 
 ---
 
@@ -39,7 +39,7 @@
 | 6 | Checkout + Orders | `[x]` |
 | 7 | Payments | `[x]` |
 | 8 | Promotions + Reviews | `[x]` |
-| 9 | Kafka + Outbox + Notifications | `[ ]` |
+| 9 | Kafka + Outbox + Notifications | `[x]` |
 | 10 | Premium Next.js Storefront | `[ ]` |
 | 11 | Admin Dashboard | `[ ]` |
 | 12 | Testing + Observability + CI/CD | `[ ]` |
@@ -150,13 +150,13 @@
 
 ## Phase 9 — Kafka + Outbox + Notifications
 
-- [ ] Outbox table + publisher
-- [ ] Kafka in docker-compose
-- [ ] Domain events: OrderPlaced, PaymentSucceeded, PaymentFailed, OrderShipped, OrderDelivered
-- [ ] Notification module with channel abstraction (email first; SMS/push pluggable)
-- [ ] Idempotent consumers
-- [ ] Redis: catalog caching, rate limiting, idempotency support
-- [ ] Tests (Kafka Testcontainers)
+- [x] Outbox (`common.messaging.Outbox`, written in the business tx) + `OutboxRelay` (SKIP LOCKED, backoff, stop-on-failure, pending gauge, retention cleanup)
+- [x] Kafka 3.9.1 KRaft in docker-compose + Testcontainers; topics created by the app; producer idempotence + fail-fast timeouts
+- [x] Integration events: OrderPlaced, OrderStatusChanged (covers paid/failed/shipped/delivered/cancelled/refunded), UserRegistered, LowStockReached
+- [x] Notification consumer → emails for order lifecycle, welcome, low-stock (ops); `EmailSender` channel abstraction
+- [x] Idempotent consumers (`processed_events`), retries + dead-letter topics
+- [x] Redis: distributed rate limiter (Lua fixed window, in-memory fallback when Redis is down), category-tree + brand caches with eviction. Idempotency stays in PostgreSQL (D-30)
+- [x] Tests: `RedisRateLimiterTest`; `OutboxIT`, `NotificationIT` (incl. duplicate delivery), `RedisIT`; manual Kafka/Redis outage checks
 
 ## Phase 10 — Premium Next.js Storefront
 
@@ -239,6 +239,10 @@
 | D-41 | Coupons & cancellations | ✅ Decided | Cancelled orders release their redemption; refunds do not |
 | D-42 | Review eligibility | ✅ Decided | Requires a DELIVERED order containing the product; moderation before publishing |
 | D-43 | Rating updates | ✅ Decided | Review module calls `CatalogApi.updateRating` (one-way dependency) after recomputing under an advisory lock |
+| D-44 | Event publication | ✅ Decided | Own transactional outbox table + scheduled relay (not Spring Modulith externalization): explicit, observable, retry/backoff under our control |
+| D-45 | Event contract | ✅ Decided | Envelope `{eventId, type, occurredAt, data}`, versioned payload records (`…V1`), additive changes only; secrets never externalized |
+| D-46 | Delivery semantics | ✅ Decided | At-least-once relay + consumer dedup by eventId; no strict cross-event ordering guarantee |
+| D-47 | Redis failure mode | ✅ Decided | Fail open to per-instance limits / DB reads; circuit breaker to cut timeout latency in Phase 13 |
 
 ---
 
@@ -256,3 +260,4 @@
 | 2026-09-28 | 6 | Committed Phase 5 (`80a8d18`). Built idempotency infra, auth `AccountApi`, order module (V8, state machine, expiry job) and checkout module. Fixed checkout reporting "empty cart" when all items were unavailable. `./mvnw verify` green (50 unit + 112 IT); concurrency ITs repeated 3×. |
 | 2026-09-28 | 7 | Committed Phase 6 (`b9d40ef`). Built payment module (V9): provider port + mock, payments/refunds outside DB tx, signed deduplicated webhooks, reconciliation, auto-refund of late payments. `OrderApi.markPaid` now returns boolean. `./mvnw verify` green (57 unit + 133 IT). |
 | 2026-09-28 | 8 | Committed Phase 7 (`21e3222`). Built promotion module (V10: coupons, rules, atomic redemption, cart/checkout integration, release on cancel) and review module (V11: eligibility, moderation, rating aggregation). Removed a catalog↔review module cycle. Coupon concurrency test mutation-tested. `./mvnw verify` green (62 unit + 145 IT). |
+| 2026-09-28 | 9 | Committed Phase 8 (`4842523`). Built outbox + relay (V12), Kafka topics/error handling, integration events in order/auth/inventory, notification consumer, Redis rate limiter + caches; compose + Testcontainers for Kafka/Redis. `./mvnw verify` green (63 unit + 153 IT). Verified Kafka-down (events queued then delivered) and Redis-down (fallback) on local stack. |

@@ -124,11 +124,25 @@ reconcile (every 60 s, items older than 2 min):
   Full refund → order REFUNDED (if its lifecycle allows). Refunded goods are restocked by staff via
   inventory RETURN adjustments after inspection, not automatically.
 
-## Domain events (outbox → Kafka in Phase 9)
+## Events
 
-`OrderPlaced`, `OrderPaid`, `OrderCancelled`, `OrderShipped`, `OrderDelivered`, `OrderRefunded`, `PaymentFailed`, `InventoryLow`, `ReviewSubmitted`, `UserRegistered`, `PasswordResetRequested`.
+In-process domain events (`OrderPlaced`, `OrderStatusChanged`, `StockStatusChanged`, `LowStockReached`,
+`UserRegistered`, `PasswordResetRequested`) are published inside the changing transaction. Each owning module
+converts the relevant ones into **integration events** written to the transactional outbox in that same
+transaction:
 
-Consumers must be idempotent (dedup by event ID).
+| Topic | Event types | Key |
+|---|---|---|
+| `commercex.orders` | `OrderPlaced`, `OrderStatusChanged` (incl. customer email, totals) | orderId |
+| `commercex.users` | `UserRegistered` | userId |
+| `commercex.inventory` | `LowStockReached` | variantId |
+
+Envelope: `{eventId, type, occurredAt, data}` (+ Kafka headers `eventId`, `eventType`). `PasswordResetRequested`
+is never externalized (it carries the reset link). `OutboxRelay` publishes with `FOR UPDATE SKIP LOCKED`,
+at-least-once, exponential backoff up to 5 min, stops a batch on first failure. Consumers deduplicate on
+`processed_events(consumer, event_id)` inside their transaction; failures retry 3× then go to `<topic>.DLT`.
+Ordering is per key in the normal case; a failed-then-retried event may be overtaken, so consumers must not rely
+on strict ordering (the notification consumer reacts to each event independently).
 
 ## Promotions
 

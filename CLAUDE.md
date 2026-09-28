@@ -24,7 +24,8 @@ cd frontend && npm run dev
 
 ## Gotchas
 - VS Code's Java extension also compiles into `backend/target`; if Maven reports missing class files, run `./mvnw clean verify`.
-- Postgres runs on host port **5442** (not 5432). Mailpit UI: http://localhost:8026.
+- Postgres runs on host port **5442** (not 5432), Redis on **6389**, Kafka on 9092. Mailpit UI: http://localhost:8026. Integration tests start Postgres + Kafka + Redis containers (Docker required).
+- Cross-module async work: write an integration event with `Outbox.append(...)` inside the business transaction (never call KafkaTemplate directly from business code). Kafka consumers must call `ProcessedEvents.markIfNew` first.
 - `local` profile bootstraps admin `admin@commercex.local` / `CommerceX-Admin-2026!` and uses an ephemeral JWT key (tokens die on restart).
 - New public endpoints must be added to `common/security/SecurityConfig` (deny-by-default).
 - Mock payment tokens: `tok_success`, `tok_decline`, `tok_3ds`, `tok_pending`, `tok_timeout` (charges then times out), `tok_unavailable`. `commercex.payments.webhook-secret` (≥ 32 chars) is required at startup.

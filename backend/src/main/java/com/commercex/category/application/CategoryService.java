@@ -22,6 +22,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,7 +42,10 @@ public class CategoryService implements CategoryApi {
 
     // ---- public read side --------------------------------------------------------------------
 
-    /** Active categories as a tree; a category is hidden when any ancestor is inactive. */
+    public static final String TREE_CACHE = "categories.tree";
+
+    /** Active categories as a tree; a category is hidden when any ancestor is inactive. Cached, evicted on writes. */
+    @Cacheable(cacheNames = TREE_CACHE, key = "'all'")
     @Transactional(readOnly = true)
     public List<CategoryNode> activeTree() {
         List<Category> all = categories.findAllByOrderByPositionAscNameAsc();
@@ -94,6 +99,7 @@ public class CategoryService implements CategoryApi {
         return categories.findAllByOrderByPositionAscNameAsc().stream().map(CategoryView::from).toList();
     }
 
+    @CacheEvict(cacheNames = TREE_CACHE, allEntries = true)
     @Transactional
     public CategoryView create(long actorId, CategoryCommand command) {
         String slug = slug(command);
@@ -113,6 +119,7 @@ public class CategoryService implements CategoryApi {
         return CategoryView.from(category);
     }
 
+    @CacheEvict(cacheNames = TREE_CACHE, allEntries = true)
     @Transactional
     public CategoryView update(long actorId, long id, CategoryCommand command) {
         Category category = load(id);
@@ -140,6 +147,7 @@ public class CategoryService implements CategoryApi {
     }
 
     /** Only empty leaf categories can be deleted; otherwise deactivate them. */
+    @CacheEvict(cacheNames = TREE_CACHE, allEntries = true)
     @Transactional
     public void delete(long actorId, long id) {
         Category category = load(id);

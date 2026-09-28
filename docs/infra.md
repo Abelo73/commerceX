@@ -10,8 +10,8 @@ File: `infra/docker-compose.yml`. Host ports are shifted from defaults to avoid 
 |---|---|---|---|
 | postgres | `postgres:17-alpine` | **5442** | Phase 1 |
 | mailpit (dev SMTP + UI) | `axllent/mailpit` | **1026 / 8026** | Phase 2 |
-| redis | `redis:7` | **6389** | Phase 9 (or earlier for rate limiting) |
-| kafka (KRaft, no ZooKeeper) | `apache/kafka` | 9092 | Phase 9 |
+| redis | `redis:7-alpine` | **6389** | Phase 9 ✅ (rate limiting, cache) |
+| kafka (KRaft, no ZooKeeper) | `apache/kafka:3.9.1` | 9092 | Phase 9 ✅ (topics created by the app; auto-create off) |
 | prometheus | `prom/prometheus` | **9091** | Phase 12 |
 | grafana | `grafana/grafana` | **3002** | Phase 12 |
 | backend | built from `backend/Dockerfile` | 8080 | Phase 12 (full-stack compose profile) |
@@ -35,4 +35,12 @@ Grafana ◄── Prometheus
 
 ## Tests
 
-Integration tests use **Testcontainers** (PostgreSQL, Redis, Kafka) — they do not depend on docker-compose.
+Integration tests use **Testcontainers** (PostgreSQL 17, Kafka 3.9.1, Redis 7) via `TestcontainersConfiguration` — they do not depend on docker-compose. All three start once per test JVM (shared Spring context).
+
+## Degraded modes (verified manually, Phase 9)
+
+| Dependency down | Behaviour |
+|---|---|
+| Kafka | Requests succeed; events wait in `outbox_events` (metric `commercex_outbox_pending`), retried with exponential backoff, delivered after recovery |
+| Redis | Rate limiting falls back to in-memory per instance (`commercex_ratelimit_fallback_total`); cache misses go to PostgreSQL. ~1 s extra latency per request from 500 ms timeouts — circuit breaker planned (Phase 13) |
+| SMTP | Consumer fails → retried 3× with backoff → `<topic>.DLT`; order flow unaffected |

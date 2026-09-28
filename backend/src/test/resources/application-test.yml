@@ -14,3 +14,5 @@ commercex:
       password-reset-per-ip: { capacity: 100000, period: 1m }
   cart:
     guest-creations-per-ip: { capacity: 100000, period: 1m }
+  outbox:
+    poll-interval-ms: 200
