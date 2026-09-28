@@ -13,16 +13,16 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 7 — Payments (next) |
-| **Current task** | Phase 6 complete — `./mvnw verify` green (50 unit + 112 integration tests) |
+| **Current phase** | Phase 8 — Promotions + Reviews (next) |
+| **Current task** | Phase 7 complete — `./mvnw verify` green (57 unit + 133 integration tests) |
 | **Last updated** | 2026-09-28 |
-| **Repo state** | Git `main`, Phase 5 = `80a8d18`. Phase 6 (idempotency, checkout + order modules, V8) not yet committed |
+| **Repo state** | Git `main`, Phase 6 = `b9d40ef`. Phase 7 (payment module, V9) not yet committed |
 | **Blockers** | None. Note: app startup varied 17–70 s on dev machine — revisit in Phase 13 performance review |
 
 ### Next up
-1. Commit Phase 6 (awaiting user go-ahead)
-2. Phase 7: `V9__create_payments.sql`, `PaymentProvider` + `MockPaymentProvider`, create payment outside the order tx
-3. Phase 7: signed + deduplicated webhooks → `OrderApi.markPaid/markPaymentFailed`, reconciliation job, refunds (incl. late payment on a cancelled order)
+1. Commit Phase 7 (awaiting user go-ahead)
+2. Phase 8: `V10__create_coupons.sql` — coupons + redemptions, apply in cart/quote/checkout (conditional `used_count` update)
+3. Phase 8: `V11__create_reviews.sql` — verified-purchase reviews, moderation, rating aggregation
 
 ---
 
@@ -37,7 +37,7 @@
 | 4 | Inventory | `[x]` |
 | 5 | Cart + Wishlist | `[x]` |
 | 6 | Checkout + Orders | `[x]` |
-| 7 | Payments | `[ ]` |
+| 7 | Payments | `[x]` |
 | 8 | Promotions + Reviews | `[ ]` |
 | 9 | Kafka + Outbox + Notifications | `[ ]` |
 | 10 | Premium Next.js Storefront | `[ ]` |
@@ -132,13 +132,13 @@
 
 ## Phase 7 — Payments
 
-- [ ] `PaymentProvider` interface + `MockPaymentProvider`
-- [ ] Payment intent, provider reference, status
-- [ ] Idempotency on payment + refund
-- [ ] Webhook endpoint with signature check + deduplication
-- [ ] Failed payment + refund flows
-- [ ] Reconciliation for "payment succeeded but request timed out"
-- [ ] Tests
+- [x] `PaymentProvider` port + deterministic `MockPaymentProvider` (tokens drive outcomes incl. 3DS, timeout-after-charge, outage); provider registry
+- [x] Payments: record → provider call outside tx → apply under row lock; one active payment per order (partial unique index); per-(order,key) idempotency + provider idempotency key
+- [x] Idempotency on payment + refund (same key → same record, never a second charge/refund)
+- [x] Webhooks: HMAC-SHA256 with signed timestamp (replay window 5 min), constant-time compare, dedup table, amount/currency verification
+- [x] Failed payment (retry with new key), admin refunds (full/partial, bounded, lifecycle-checked), automatic refund of late payments on cancelled orders
+- [x] Reconciliation job for unsettled payments and pending refunds ("succeeded but timed out" tested)
+- [x] Tests: `WebhookSignatureTest`, `PaymentTest`; `PaymentFlowIT` (9), `PaymentWebhookIT` (7), `RefundIT` (5)
 
 ## Phase 8 — Promotions + Reviews
 
@@ -230,6 +230,11 @@
 | D-32 | Order row locking | ✅ Decided | All status changes load the order `FOR UPDATE`; expiry job uses `SKIP LOCKED` |
 | D-33 | Payment window | ✅ Decided | 30 min (`commercex.orders.payment-window`); PAYMENT_FAILED keeps the reservation until then |
 | D-34 | Tax | ⏳ Open | Placeholder 0 (prices tax-inclusive); decide on a tax provider before launch |
+| D-35 | Payment call boundaries | ✅ Decided | Never call the provider inside a DB transaction: record → call → apply; unknown outcomes stay PENDING for webhook/reconciliation |
+| D-36 | Webhook matching | ✅ Decided | Our payment/refund IDs are sent as provider metadata and echoed in webhooks (works before our own call returns) |
+| D-37 | Late payment | ✅ Decided | `OrderApi.markPaid` returns false for non-payable orders → automatic full refund; order stays CANCELLED |
+| D-38 | Refund restocking | ✅ Decided | Not automatic; staff inspect returns and use inventory RETURN adjustments |
+| D-39 | Real provider | ⏳ Open | Only the mock adapter exists; pick provider (e.g. Stripe) and implement its adapter + webhook translation before launch |
 
 ---
 
@@ -245,3 +250,4 @@
 | 2026-09-28 | 4 | Committed Phase 3 (`c0b89ef`). Built inventory module (V5–V6): atomic reservations, ledger, admin adjustments/thresholds, catalog stock flags + availability. Concurrency suite passes and was mutation-tested. `./mvnw verify` green (46 unit + 75 IT). |
 | 2026-09-28 | 5 | Committed Phase 4 (`aae8e82`). Built cart + wishlist modules (V7), `CatalogApi`, scheduling. Fixed untyped timestamp param in CASE. `./mvnw verify` green (46 unit + 89 IT). |
 | 2026-09-28 | 6 | Committed Phase 5 (`80a8d18`). Built idempotency infra, auth `AccountApi`, order module (V8, state machine, expiry job) and checkout module. Fixed checkout reporting "empty cart" when all items were unavailable. `./mvnw verify` green (50 unit + 112 IT); concurrency ITs repeated 3×. |
+| 2026-09-28 | 7 | Committed Phase 6 (`b9d40ef`). Built payment module (V9): provider port + mock, payments/refunds outside DB tx, signed deduplicated webhooks, reconciliation, auto-refund of late payments. `OrderApi.markPaid` now returns boolean. `./mvnw verify` green (57 unit + 133 IT). |

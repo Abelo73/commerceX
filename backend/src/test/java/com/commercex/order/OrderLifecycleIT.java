@@ -1,7 +1,6 @@
 package com.commercex.order;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -11,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.commercex.AbstractIntegrationTest;
 import com.commercex.auth.AuthApi;
 import com.commercex.checkout.CheckoutSupport;
-import com.commercex.common.error.ConflictException;
 import com.commercex.order.application.OrderService;
 import com.commercex.testsupport.ShopFixtures;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -90,8 +88,8 @@ class OrderLifecycleIT extends AbstractIntegrationTest {
         JsonNode order = placeOrder(2);
         long id = order.get("id").asLong();
 
-        orderApi.markPaid(id, "pay_123");
-        orderApi.markPaid(id, "pay_123"); // duplicate webhook
+        assertThat(orderApi.markPaid(id, "pay_123")).isTrue();
+        assertThat(orderApi.markPaid(id, "pay_123")).as("duplicate notification").isTrue();
 
         assertThat(orderStatus(id)).isEqualTo("PAID");
         assertThat(reserved()).isZero();
@@ -172,14 +170,9 @@ class OrderLifecycleIT extends AbstractIntegrationTest {
         jdbc.update("UPDATE orders SET payment_due_at = now() - interval '1 second' WHERE id = ?", id);
 
         CountDownLatch start = new CountDownLatch(1);
-        CompletableFuture<Throwable> payment = CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<Boolean> payment = CompletableFuture.supplyAsync(() -> {
             await(start);
-            try {
-                orderApi.markPaid(id, "pay_late");
-                return null;
-            } catch (Throwable t) {
-                return t;
-            }
+            return orderApi.markPaid(id, "pay_late");
         });
         CompletableFuture<Void> expiry = CompletableFuture.runAsync(() -> {
             await(start);
@@ -188,17 +181,16 @@ class OrderLifecycleIT extends AbstractIntegrationTest {
             }
         });
         start.countDown();
-        Throwable paymentError = payment.get(30, TimeUnit.SECONDS);
+        boolean paid = payment.get(30, TimeUnit.SECONDS);
         expiry.get(30, TimeUnit.SECONDS);
 
         String finalStatus = orderStatus(id);
         if (finalStatus.equals("PAID")) {
-            assertThat(paymentError).isNull();
+            assertThat(paid).isTrue();
             assertThat(onHand()).as("stock sold").isEqualTo(8);
         } else {
             assertThat(finalStatus).isEqualTo("CANCELLED");
-            assertThat(paymentError).as("late payment rejected → refund in Phase 7")
-                    .isInstanceOf(ConflictException.class);
+            assertThat(paid).as("late payment rejected → caller refunds").isFalse();
             assertThat(onHand()).as("stock returned").isEqualTo(10);
         }
         assertThat(reserved()).isZero();
@@ -210,8 +202,8 @@ class OrderLifecycleIT extends AbstractIntegrationTest {
         mvc.perform(post("/api/v1/orders/{n}/cancel", number(order)).header("Authorization", buyer.customer.bearer()))
                 .andExpect(status().isOk());
 
-        assertThatThrownBy(() -> orderApi.markPaid(order.get("id").asLong(), "pay_late"))
-                .isInstanceOf(ConflictException.class);
+        assertThat(orderApi.markPaid(order.get("id").asLong(), "pay_late")).isFalse();
+        assertThat(orderStatus(order.get("id").asLong())).isEqualTo("CANCELLED");
     }
 
     private JsonNode placeOrder(int quantity) throws Exception {

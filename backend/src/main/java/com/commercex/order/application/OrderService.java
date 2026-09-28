@@ -11,6 +11,7 @@ import com.commercex.inventory.ReservationLine;
 import com.commercex.order.OrderApi;
 import com.commercex.order.OrderDetails;
 import com.commercex.order.OrderPlaced;
+import com.commercex.order.OrderRef;
 import com.commercex.order.OrderStatusChanged;
 import com.commercex.order.PlaceOrderCommand;
 import com.commercex.order.domain.Order;
@@ -72,17 +73,16 @@ public class OrderService implements OrderApi {
 
     @Override
     @Transactional
-    public void markPaid(long orderId, String paymentReference) {
+    public boolean markPaid(long orderId, String paymentReference) {
         Order order = lock(orderId);
         if (order.getStatus().isPaidOrLater() || order.getStatus() == OrderStatus.REFUNDED) {
-            return; // duplicate payment notification
+            return true; // duplicate payment notification
         }
         if (!order.getStatus().isUnpaid()) {
-            throw new ConflictException(ErrorCode.INVALID_STATE_TRANSITION,
-                    "Order " + order.getOrderNumber() + " is " + order.getStatus() + " and can no longer be paid",
-                    Map.of("status", order.getStatus().name()));
+            return false; // e.g. cancelled after the payment window closed: caller refunds
         }
         transition(order, OrderStatus.PAID, "Payment captured (" + paymentReference + ")", null);
+        return true;
     }
 
     @Override
@@ -95,9 +95,43 @@ public class OrderService implements OrderApi {
     }
 
     @Override
+    @Transactional
+    public boolean markRefunded(long orderId, String reason) {
+        Order order = lock(orderId);
+        if (!order.getStatus().canTransitionTo(OrderStatus.REFUNDED)) {
+            return false;
+        }
+        transition(order, OrderStatus.REFUNDED, reason, null);
+        return true;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Optional<OrderDetails> find(long orderId) {
         return orders.findById(orderId).map(OrderService::details);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<OrderRef> ref(long orderId) {
+        return orders.findById(orderId).map(OrderService::ref);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<OrderRef> refForCustomer(long userId, String orderNumber) {
+        return orders.findByOrderNumberAndUserId(orderNumber, userId).map(OrderService::ref);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<OrderRef> refByNumber(String orderNumber) {
+        return orders.findByOrderNumber(orderNumber).map(OrderService::ref);
+    }
+
+    private static OrderRef ref(Order o) {
+        return new OrderRef(o.getId(), o.getOrderNumber(), o.getUserId(), o.getStatus().name(), o.getTotalMinor(),
+                o.getCurrency(), o.getPaymentDueAt());
     }
 
     // ---- customer --------------------------------------------------------------------------------

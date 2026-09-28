@@ -50,6 +50,8 @@ class SecurityConfig {
                         .requestMatchers(GET, "/api/v1/products", "/api/v1/products/**",
                                 "/api/v1/categories", "/api/v1/categories/**",
                                 "/api/v1/brands", "/api/v1/brands/**").permitAll()
+                        // payment provider webhooks: authenticated by HMAC signature, not by user token
+                        .requestMatchers(POST, "/api/v1/payments/webhooks/**").permitAll()
                         // cart works for guests (X-Cart-Token) and users (bearer); merge requires a user
                         .requestMatchers(POST, "/api/v1/cart/merge").authenticated()
                         .requestMatchers("/api/v1/cart", "/api/v1/cart/**").permitAll()

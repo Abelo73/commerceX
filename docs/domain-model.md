@@ -96,19 +96,31 @@ must be refunded (Phase 7).
 ## Payment flow
 
 ```text
-createPayment (outside tx) ──► provider
-        │ success/timeout/error
-        ▼
-payment status updated in its own short tx
-        ▲
-webhook ─┘  (dedup by provider_event_id; source of truth for final state)
-        ▲
-reconciliation job polls getPayment for PENDING payments older than N minutes
+POST /orders/{n}/payments  { paymentToken } + Idempotency-Key
+  1. tx: find payment by (order, key) → reuse;  else order unpaid & in window & no active payment
+         → insert PENDING payment                       (partial unique index: one active per order)
+  2. no tx: provider.createPayment(key "commercex-pay-<id>", metadata paymentId)
+            timeout / 5xx → outcome UNKNOWN → leave PENDING
+  3. tx (payment row locked): apply result
+         SUCCEEDED → OrderApi.markPaid → PAID + stock committed
+                     markPaid == false (order cancelled meanwhile) → automatic full refund
+         FAILED    → OrderApi.markPaymentFailed (reservation kept until the window closes)
+         REQUIRES_ACTION → nextActionUrl (3-D Secure)
+
+webhook  → verify HMAC (t=…,v1=…, 5 min tolerance) → tx: insert event (unique provider+event id)
+           + apply result (same code path as 3) → duplicates are no-ops
+reconcile (every 60 s, items older than 2 min):
+           PENDING without reference → createPayment again with the same key (provider dedups)
+           PENDING / REQUIRES_ACTION with reference → getPayment → apply
+           PENDING refunds → provider.refund again with the same key → apply
 ```
 
-- "Payment succeeded but our request timed out" → payment stays PENDING → webhook or reconciliation job resolves it.
-- Duplicate webhook → unique constraint on `(provider, provider_event_id)` → no-op.
-- Payment transitions are idempotent: applying SUCCEEDED twice does nothing the second time.
+- "Payment succeeded but our request timed out" → PENDING → reconciliation finds SUCCEEDED → PAID (tested).
+- Duplicate webhook → unique `(provider, provider_event_id)` → acknowledged, nothing applied (tested).
+- Settled payments (SUCCEEDED / FAILED) never change again; amount/currency mismatches are rejected and audited.
+- Refunds: record (tx) → provider (no tx) → apply (tx). Never more than captured − refunded − pending.
+  Full refund → order REFUNDED (if its lifecycle allows). Refunded goods are restocked by staff via
+  inventory RETURN adjustments after inspection, not automatically.
 
 ## Domain events (outbox → Kafka in Phase 9)
 

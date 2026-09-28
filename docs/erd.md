@@ -103,9 +103,9 @@ Price lives on the **variant** (sizes/colors can differ); listing shows the prod
 ### payment
 | Table | Key columns |
 |---|---|
-| `payments` | order_id, provider, provider_reference (unique per provider), status (PENDING/REQUIRES_ACTION/SUCCEEDED/FAILED/CANCELLED), amount_minor, currency, failure_reason, version |
-| `refunds` | payment_id, provider_reference, amount_minor, status, reason |
-| `payment_webhook_events` | provider, provider_event_id — **unique(provider, provider_event_id)** for dedup, payload JSONB, processed_at |
+| `payments` | order_id, user_id, provider, provider_reference (unique per provider), idempotency_key (**unique per order**), status (PENDING/REQUIRES_ACTION/SUCCEEDED/FAILED), amount_minor, currency, refunded_minor (**CHECK ≤ amount**), failure_code/message, next_action_url, version. **Partial unique index: one PENDING/REQUIRES_ACTION/SUCCEEDED payment per order** |
+| `refunds` | payment_id, idempotency_key (unique per payment), provider_reference, amount_minor, status (PENDING/SUCCEEDED/FAILED), reason, actor_user_id |
+| `payment_webhook_events` | provider, provider_event_id — **unique(provider, provider_event_id)** for dedup, event_type, payload JSONB, outcome |
 
 ### promotion
 | Table | Key columns |
@@ -136,7 +136,7 @@ V5__create_inventory.sql             Phase 4 ✅
 V6__catalog_stock_flags.sql          Phase 4 ✅
 V7__create_carts_wishlist.sql        Phase 5 ✅
 V8__create_orders.sql                Phase 6 ✅
-V9__create_payments.sql              Phase 7
+V9__create_payments.sql              Phase 7 ✅
 V10__create_coupons.sql              Phase 8
 V11__create_reviews.sql              Phase 8
 V12__create_outbox.sql               Phase 9

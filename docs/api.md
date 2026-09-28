@@ -78,13 +78,16 @@ POST /orders                               👤  { addressId, shippingMethod, ex
 GET  /orders                               👤  own orders (summary, newest first)
 GET  /orders/{orderNumber}                 👤  own order: items, totals, address, status history
 POST /orders/{orderNumber}/cancel          👤  only while unpaid; releases stock
-POST /orders/{orderNumber}/payments        👤  Idempotency-Key
+POST /orders/{orderNumber}/payments        👤  { paymentToken } + Idempotency-Key → 201 new / 200 same key; status PENDING | REQUIRES_ACTION (nextActionUrl) | SUCCEEDED | FAILED
+                                                409 ORDER_NOT_PAYABLE | PAYMENT_IN_PROGRESS
+GET  /orders/{orderNumber}/payments        👤  own payments
 POST /reviews                              👤  verified purchasers only
 ```
 
 ### Payments (provider-facing)
 ```text
-POST /payments/webhooks/{provider}         🌐  signature-verified, deduplicated
+POST /payments/webhooks/{provider}         🌐  header X-CommerceX-Signature: t=<unix>,v1=<hex HMAC-SHA256(secret, t.body)>;
+                                                401 INVALID_SIGNATURE; duplicates → 200 {outcome: DUPLICATE}
 ```
 
 ### Admin (`/admin/...`)
@@ -105,7 +108,8 @@ GET    /admin/inventory/{variantId}/movements      🛠🚚  ledger, newest firs
 GET    /admin/orders?status=&q=            🛠🚚  q = exact order number or customer email
 GET    /admin/orders/{orderNumber}         🛠🚚
 POST   /admin/orders/{orderNumber}/transitions    🛠🚚  { toStatus: PROCESSING|PACKED|SHIPPED|DELIVERED|CANCELLED, reason } — state machine enforced
-POST   /admin/payments/{id}/refunds        🛠   Idempotency-Key
+GET    /admin/orders/{orderNumber}/payments    🛠🚚  payments with provider refs + refunds
+POST   /admin/payments/{id}/refunds        🛠   { amount?, reason } + Idempotency-Key; 409 REFUND_NOT_ALLOWED (e.g. SHIPPED)
 GET    /admin/customers?q=                 🛠   email search, paginated
 PATCH  /admin/customers/{id}               🛠   { status?, roles? } — cannot lock self / drop own ADMIN
 CRUD   /admin/coupons                      🛠

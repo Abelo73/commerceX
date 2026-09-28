@@ -1,5 +1,7 @@
 # Local development against infra/docker-compose.yml
 commercex:
+  payments:
+    webhook-secret: local-dev-webhook-secret-change-me-0123456789
   security:
     jwt:
       allow-ephemeral-keys: true   # tokens are invalidated on restart; fine for dev

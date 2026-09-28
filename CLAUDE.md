@@ -27,6 +27,8 @@ cd frontend && npm run dev
 - Postgres runs on host port **5442** (not 5432). Mailpit UI: http://localhost:8026.
 - `local` profile bootstraps admin `admin@commercex.local` / `CommerceX-Admin-2026!` and uses an ephemeral JWT key (tokens die on restart).
 - New public endpoints must be added to `common/security/SecurityConfig` (deny-by-default).
+- Mock payment tokens: `tok_success`, `tok_decline`, `tok_3ds`, `tok_pending`, `tok_timeout` (charges then times out), `tok_unavailable`. `commercex.payments.webhook-secret` (≥ 32 chars) is required at startup.
+- Never call a payment provider inside a DB transaction: record (tx) → call → apply (tx), see `PaymentService`.
 - Integration tests must extend `AbstractIntegrationTest` without extra context-changing annotations, so all share one context + container.
 
 ## Non-negotiable rules

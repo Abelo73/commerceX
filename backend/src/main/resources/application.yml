@@ -115,5 +115,10 @@ commercex:
     shipping-methods:
       - { code: STANDARD, name: Standard, price-minor: 599, free-over-minor: 10000, min-days: 3, max-days: 5 }
       - { code: EXPRESS, name: Express, price-minor: 1499, min-days: 1, max-days: 2 }
+  payments:
+    provider: ${PAYMENT_PROVIDER:mock}
+    webhook-secret: ${PAYMENT_WEBHOOK_SECRET:}
+    signature-tolerance: 5m
+    reconcile-after: 2m
   notification:
     from: ${MAIL_FROM:no-reply@commercex.local}

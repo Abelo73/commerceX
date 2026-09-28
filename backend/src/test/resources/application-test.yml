@@ -1,4 +1,6 @@
 commercex:
+  payments:
+    webhook-secret: test-webhook-secret-0123456789-abcdefghijkl
   security:
     jwt:
       allow-ephemeral-keys: true
