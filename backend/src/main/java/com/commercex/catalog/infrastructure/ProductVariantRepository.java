@@ -11,6 +11,9 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 
     List<ProductVariant> findBySkuIn(Collection<String> skus);
 
+    @Query("select v from ProductVariant v join fetch v.product where v.id in :ids")
+    List<ProductVariant> findWithProductByIdIn(Collection<Long> ids);
+
     @Modifying
     @Query(value = "UPDATE product_variants SET in_stock = :inStock WHERE id = :variantId", nativeQuery = true)
     int updateInStock(long variantId, boolean inStock);

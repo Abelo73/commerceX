@@ -10,3 +10,5 @@ commercex:
       login-per-ip: { capacity: 100000, period: 1m }
       register-per-ip: { capacity: 100000, period: 1m }
       password-reset-per-ip: { capacity: 100000, period: 1m }
+  cart:
+    guest-creations-per-ip: { capacity: 100000, period: 1m }

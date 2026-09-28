@@ -105,5 +105,9 @@ commercex:
       password: ${ADMIN_PASSWORD:}
   catalog:
     currency: ${STORE_CURRENCY:USD}
+  cart:
+    guest-ttl: 30d
+    max-lines: 50
+    guest-creations-per-ip: { capacity: 30, period: 1h }
   notification:
     from: ${MAIL_FROM:no-reply@commercex.local}

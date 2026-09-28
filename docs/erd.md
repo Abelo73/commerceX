@@ -88,9 +88,9 @@ Price lives on the **variant** (sizes/colors can differ); listing shows the prod
 ### cart / wishlist
 | Table | Key columns |
 |---|---|
-| `carts` | user_id (unique, nullable), guest_token (unique, nullable), coupon_code, expires_at, version |
-| `cart_items` | cart_id, variant_id, quantity — unique(cart_id, variant_id). **No price stored** — always recomputed |
-| `wishlist_items` | user_id, product_id, created_at — unique(user_id, product_id) |
+| `carts` | user_id (unique) **xor** guest_token_hash (unique, SHA-256 of the opaque token) — CHECK exactly one owner; expires_at (guest only, sliding 30 d; hourly cleanup job). coupon_code arrives in Phase 8 |
+| `cart_items` | PK(cart_id, variant_id), quantity 1–99, added_at. **No price stored** — always recomputed from the catalog |
+| `wishlist_items` | PK(user_id, product_id), created_at |
 
 ### order
 | Table | Key columns |
@@ -133,7 +133,7 @@ V3__create_categories_brands.sql     Phase 3 ✅
 V4__create_products.sql              Phase 3 ✅
 V5__create_inventory.sql             Phase 4 ✅
 V6__catalog_stock_flags.sql          Phase 4 ✅
-V7__create_carts_wishlist.sql        Phase 5
+V7__create_carts_wishlist.sql        Phase 5 ✅
 V8__create_orders.sql                Phase 6
 V9__create_payments.sql              Phase 7
 V10__create_coupons.sql              Phase 8

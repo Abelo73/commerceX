@@ -13,16 +13,16 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 5 — Cart + Wishlist (next) |
-| **Current task** | Phase 4 complete — `./mvnw verify` green (46 unit + 75 integration tests) |
+| **Current phase** | Phase 6 — Checkout + Orders (next) |
+| **Current task** | Phase 5 complete — `./mvnw verify` green (46 unit + 89 integration tests) |
 | **Last updated** | 2026-09-28 |
-| **Repo state** | Git `main`, Phase 3 = `c0b89ef`. Phase 4 (inventory module, V5–V6) not yet committed |
+| **Repo state** | Git `main`, Phase 4 = `aae8e82`. Phase 5 (cart + wishlist modules, CatalogApi, V7) not yet committed |
 | **Blockers** | None. Note: app startup varied 17–70 s on dev machine — revisit in Phase 13 performance review |
 
 ### Next up
-1. Commit Phase 4 (awaiting user go-ahead)
-2. Phase 5: `V7__create_carts_wishlist.sql`; `CatalogApi` (purchasable variant lookup) for cart validation
-3. Phase 5: guest + user carts (merge on login), server-side pricing, wishlist
+1. Commit Phase 5 (awaiting user go-ahead)
+2. Phase 6: idempotency-key infrastructure (`idempotency_keys` table from V1), `V8__create_orders.sql`
+3. Phase 6: checkout quote + place order (reserve stock in same tx), order state machine + history, expiry job
 
 ---
 
@@ -35,7 +35,7 @@
 | 2 | Authentication + Users | `[x]` |
 | 3 | Product Catalog | `[x]` |
 | 4 | Inventory | `[x]` |
-| 5 | Cart + Wishlist | `[ ]` |
+| 5 | Cart + Wishlist | `[x]` |
 | 6 | Checkout + Orders | `[ ]` |
 | 7 | Payments | `[ ]` |
 | 8 | Promotions + Reviews | `[ ]` |
@@ -115,10 +115,11 @@
 
 ## Phase 5 — Cart + Wishlist
 
-- [ ] Cart (guest + authenticated, merge on login)
-- [ ] Add / remove / change quantity, server-side price validation
-- [ ] Wishlist add / remove / view / move to cart
-- [ ] Tests
+- [x] Cart (guest via hashed `X-Cart-Token` + authenticated; explicit idempotent merge after login; guest TTL 30 d + hourly cleanup; guest-creation rate limit)
+- [x] Add / update / remove / clear; live catalog pricing, per-line issues (UNAVAILABLE / OUT_OF_STOCK / INSUFFICIENT_STOCK), `checkoutReady`; atomic upserts (concurrent tabs tested)
+- [x] Wishlist add / remove (idempotent) / view (product cards) / atomic move-to-cart
+- [x] Tests: `CartIT` (9), `WishlistIT` (5); shared `ShopFixtures`
+- [x] `CatalogApi` (variant snapshots, product cards) as the catalog's public read API
 
 ## Phase 6 — Checkout + Orders
 
@@ -221,6 +222,9 @@
 | D-24 | Inventory ↔ catalog dependency | ✅ Decided | Catalog depends on `InventoryApi`; inventory never depends on catalog. Stock flags flow via synchronous in-transaction `StockStatusChanged` events (zero-crossings only) |
 | D-25 | Reservation expiry owner | ✅ Decided | Order module (Phase 6) cancels expired orders and releases; inventory never auto-releases |
 | D-26 | Public stock exposure | ✅ Decided | Customers see IN_STOCK / LOW_STOCK / OUT_OF_STOCK, not exact counts |
+| D-27 | Guest cart identity | ✅ Decided | Opaque `X-Cart-Token` (header, not cookie), stored as SHA-256; bearer user cart takes precedence; explicit `POST /cart/merge` |
+| D-28 | Cart pricing | ✅ Decided | Cart stores no prices; every view is priced from `CatalogApi`; problem lines flagged and excluded, never silently dropped |
+| D-29 | Cart stock | ✅ Decided | Stock checked on add/update but reserved only at checkout (no cart holds) |
 
 ---
 
@@ -234,3 +238,4 @@
 | 2026-09-28 | 2 | Committed Phase 1 (`7a56fde`). Built auth module (JWT RS256, rotating refresh cookies, RBAC, profile, addresses, password reset, admin customers, bootstrap admin), common security/rate-limit/audit, notification module (email), Mailpit. Fixed CHAR/CITEXT schema-validation mapping. `./mvnw verify` green (31 unit + 35 IT); local smoke test incl. Mailpit delivery. |
 | 2026-09-28 | 3 | Committed Phase 2 (`16d8b15`). Built category + catalog modules (V3–V4), FTS search, admin CRUD with optimistic locking, public catalog API. `./mvnw verify` green (45 unit + 56 IT); local smoke test. |
 | 2026-09-28 | 4 | Committed Phase 3 (`c0b89ef`). Built inventory module (V5–V6): atomic reservations, ledger, admin adjustments/thresholds, catalog stock flags + availability. Concurrency suite passes and was mutation-tested. `./mvnw verify` green (46 unit + 75 IT). |
+| 2026-09-28 | 5 | Committed Phase 4 (`aae8e82`). Built cart + wishlist modules (V7), `CatalogApi`, scheduling. Fixed untyped timestamp param in CASE. `./mvnw verify` green (46 unit + 89 IT). |

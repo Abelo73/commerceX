@@ -51,17 +51,20 @@ GET /products/{slug}/reviews               🌐  approved only
 
 ### Cart & wishlist
 ```text
-GET    /cart                               🌐👤  (guest via X-Cart-Token)
-POST   /cart/items                         🌐👤  { variantId, quantity }
-PATCH  /cart/items/{variantId}             🌐👤
+GET    /cart                               🌐👤  bearer → user cart; else X-Cart-Token → guest cart; else empty
+POST   /cart/items                         🌐👤  { variantId, quantity } — first guest add returns X-Cart-Token (header + body `cartToken`)
+PATCH  /cart/items/{variantId}             🌐👤  { quantity }
 DELETE /cart/items/{variantId}             🌐👤
-PUT    /cart/coupon                        🌐👤
-DELETE /cart/coupon                        🌐👤
-POST   /cart/merge                         👤    guest → user on login
-GET    /wishlist                           👤
-PUT    /wishlist/{productId}               👤
-DELETE /wishlist/{productId}               👤
-POST   /wishlist/{productId}/move-to-cart  👤
+DELETE /cart                               🌐👤  clear
+POST   /cart/merge                         👤    X-Cart-Token → folded into user cart (summed, capped at 99), idempotent
+PUT    /cart/coupon, DELETE /cart/coupon   🌐👤  (Phase 8)
+      Cart response: lines priced live from the catalog; line `issue` = UNAVAILABLE | OUT_OF_STOCK |
+      INSUFFICIENT_STOCK (+ availableQuantity), excluded from subtotal; `checkoutReady`.
+      Limits: 99 per line, 50 lines; stock checked on add/update (not reserved until checkout).
+GET    /wishlist                           👤  newest first; unpublished products stay with available=false
+PUT    /wishlist/{productId}               👤  idempotent; max 200
+DELETE /wishlist/{productId}               👤  idempotent
+POST   /wishlist/{productId}/move-to-cart  👤  { variantId, quantity } — atomic: wishlist unchanged if the cart rejects
 ```
 
 ### Checkout & orders

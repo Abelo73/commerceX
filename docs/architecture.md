@@ -26,7 +26,7 @@ Base package: `com.commercex`
 | `catalog` | Products, variants, options, images, tags, brands, search |
 | `category` | Category tree |
 | `inventory` | Stock levels, reservations, movements ledger, low-stock |
-| `cart` | Carts and cart items |
+| `cart` | Carts and cart items. Public: `CartApi` (used by wishlist, checkout) |
 | `wishlist` | Wishlist items |
 | `checkout` | Checkout session orchestration: pricing, shipping, order placement |
 | `order` | Orders, order items, state machine, status history |

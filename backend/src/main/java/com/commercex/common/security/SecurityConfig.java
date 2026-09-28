@@ -50,6 +50,9 @@ class SecurityConfig {
                         .requestMatchers(GET, "/api/v1/products", "/api/v1/products/**",
                                 "/api/v1/categories", "/api/v1/categories/**",
                                 "/api/v1/brands", "/api/v1/brands/**").permitAll()
+                        // cart works for guests (X-Cart-Token) and users (bearer); merge requires a user
+                        .requestMatchers(POST, "/api/v1/cart/merge").authenticated()
+                        .requestMatchers("/api/v1/cart", "/api/v1/cart/**").permitAll()
                         // operations (prod exposes actuator on a separate, internal port)
                         .requestMatchers(GET, "/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
                         .requestMatchers("/actuator/**").hasRole("ADMIN")
@@ -81,7 +84,7 @@ class SecurityConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "X-Correlation-Id",
                 "X-Cart-Token"));
-        config.setExposedHeaders(List.of("X-Correlation-Id", "Retry-After"));
+        config.setExposedHeaders(List.of("X-Correlation-Id", "Retry-After", "X-Cart-Token"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
