@@ -38,18 +38,37 @@ One Next.js app (App Router). Storefront and admin use separate route groups and
 
 Toasts, skeletons, empty and error states, keyboard focus styles, `prefers-reduced-motion` respected, mobile-first breakpoints, SEO metadata + product JSON-LD.
 
-## Design system (Phase 10)
+## Design system: calm navy (branch `redesign/navy`)
+
+Inspired by a user-supplied reference (deep navy hero, white product "screen" in soft rings, clean comparison
+table, numbered steps). Replaces the earlier "lane" and "night track" directions.
 
 | Token | Value | Use |
 |---|---|---|
-| chalk | `#F4F6F8` | page background |
-| asphalt | `#1D2430` | text, footer |
-| mute | `#545D6D` | secondary text (≥ 4.5:1 on chalk) |
-| midsole | `#E3E8F2` | image tiles, promo surfaces |
-| track | `#2451C9` | brand, primary actions, hero band |
-| split | `#C9302F` | sale prices and low stock only |
+| navy / navy-2 | `#0B1A4A` / `#14286A` | hero, offer card, footer, filled check icons |
+| ink / mute | `#0F172A` / `#5B6478` | text (mute ≥ 4.5:1 on white) |
+| surface / tile | `#F6F8FC` / `#EEF2F9` | alternate sections, image tiles |
+| line | `#E3E7EF` | borders, dividers |
+| brand / brand-deep | `#2455E6` / `#1B43BD` | primary actions and links on light backgrounds |
+| sky | `#8FB3FF` | small accents on navy |
+| ok | `#16A34A` | status dots |
+| split | `#C9302F` | sale prices, low stock only |
 
-Type: Archivo variable. Display = `wdth 62`, weight 800 (`display` utility); body = normal width; prices use tabular
-figures. Signature element: the hero's four numbered lanes = the four categories; the lane lines draw in once on load
-(disabled under `prefers-reduced-motion`). Product imagery falls back to tinted SVG silhouettes (`ProductArt`) until
-photography exists; real image URLs from the catalog are used when present.
+Type: Plus Jakarta Sans. `display` = 800 weight, −0.03em tracking; headings balance their line breaks.
+Buttons are soft rectangles (`rounded-lg`); pills only for badges and swatches.
+
+Home: **full-bleed photo hero** (night-run photo, navy gradient for legibility, headline, two buttons, category
+chips) → "The pair you pick is the pair you get"
+comparison (live stock, price guard, verified reviews, tracking — all real features) → category cards →
+new arrivals → three steps → navy offer card → footer.
+
+Sign-in / register: **split screen** in the `(auth)` route group (no store header/footer): photo panel with
+three account benefits on the left, form on the right; the photo becomes a banner on mobile.
+
+Photography: Unsplash License, stored in `public/images` (see `CREDITS.md`), chosen without visible third-party
+brand logos. Product imagery stays illustrated (`ProductArt` / `HeroShoe`) until real product photos exist.
+
+Route groups: `app/(store)` = header + footer + cart drawer; `app/(auth)` = bare full-screen pages.
+
+Motion is deliberately light: one slow photo settle + fade-up on hero load, and hover/drawer transitions.
+Everything is static under `prefers-reduced-motion`.

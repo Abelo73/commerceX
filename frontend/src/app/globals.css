@@ -1,44 +1,50 @@
 @import "tailwindcss";
 
 /*
- * CommerceX design tokens.
- * Track blue (the brand) on chalk; asphalt for type; split red only for sale prices and low stock.
+ * CommerceX design tokens: calm navy.
+ * Deep navy for the hero and footer, white and soft-grey surfaces elsewhere, one blue for actions.
+ * Split red is reserved for sale prices and low stock.
  */
 @theme {
-  --color-chalk: #f4f6f8;
-  --color-asphalt: #1d2430;
-  --color-mute: #545d6d;
-  --color-line: #d5dbe5;
-  --color-midsole: #e3e8f2;
-  --color-track: #2451c9;
-  --color-track-deep: #1b3e9e;
-  --color-lane: #ffffff;
+  --color-navy: #0b1a4a;
+  --color-navy-2: #14286a;
+  --color-ink: #0f172a;
+  --color-mute: #5b6478;
+  --color-line: #e3e7ef;
+  --color-surface: #f6f8fc;
+  --color-tile: #eef2f9;
+  --color-brand: #2455e6;
+  --color-brand-deep: #1b43bd;
+  --color-sky: #8fb3ff;
+  --color-ok: #16a34a;
   --color-split: #c9302f;
 
-  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
 
-  --text-xs: 0.8125rem;
+  --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
   --text-lg: 1.125rem;
-  --text-xl: 1.375rem;
-  --text-2xl: 1.75rem;
-  --text-3xl: 2.25rem;
-  --text-4xl: 3rem;
-  --text-5xl: 4rem;
-  --text-6xl: 6rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 2.75rem;
+  --text-6xl: 3.25rem;
+
+  --radius-card: 1rem;
 }
 
-/* Condensed display type: the brand's voice. Width comes from Archivo's wdth axis. */
+/* Headlines: heavy, tight, calm. */
 @utility display {
-  font-variation-settings: "wdth" 62;
   font-weight: 800;
-  line-height: 0.92;
-  letter-spacing: -0.005em;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
 }
 
+/* Section and card titles. */
 @utility condensed {
-  font-variation-settings: "wdth" 75;
+  letter-spacing: -0.015em;
 }
 
 @utility figures {
@@ -51,23 +57,46 @@
   }
 
   body {
-    background: var(--color-chalk);
-    color: var(--color-asphalt);
+    background: #ffffff;
+    color: var(--color-ink);
     font-family: var(--font-sans);
     font-size: 1rem;
-    line-height: 1.55;
+    line-height: 1.6;
     text-rendering: optimizeLegibility;
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-track);
+    outline: 2px solid var(--color-brand);
     outline-offset: 2px;
-    border-radius: 2px;
+    border-radius: 4px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
   }
 
   ::selection {
-    background: var(--color-track);
-    color: var(--color-lane);
+    background: var(--color-brand);
+    color: #ffffff;
+  }
+}
+
+/* The hero's rings breathe very slowly; nothing else moves on its own. */
+@keyframes ring-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1.03);
   }
 }
 
@@ -76,6 +105,7 @@
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }

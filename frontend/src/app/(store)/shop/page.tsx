@@ -61,7 +61,7 @@ export default async function ShopPage({ searchParams }: { searchParams: SearchP
       {results.content.length === 0 ? (
         <div className="py-16">
           <p className="text-xl">No products match these filters.</p>
-          <Link href="/shop" className="text-track mt-3 inline-block font-medium underline underline-offset-4">
+          <Link href="/shop" className="text-brand mt-3 inline-block font-medium underline underline-offset-4">
             Clear all filters
           </Link>
         </div>
@@ -72,7 +72,7 @@ export default async function ShopPage({ searchParams }: { searchParams: SearchP
       {results.totalPages > 1 && (
         <nav aria-label="Pagination" className="mt-14 flex items-center justify-center gap-4">
           {results.page > 0 && (
-            <Link href={pageHref(results.page - 1)} className="border-line rounded-full border px-4 py-2">
+            <Link href={pageHref(results.page - 1)} className="border-line rounded-lg border px-4 py-2">
               Previous
             </Link>
           )}
@@ -80,7 +80,7 @@ export default async function ShopPage({ searchParams }: { searchParams: SearchP
             Page {results.page + 1} of {results.totalPages}
           </span>
           {results.page + 1 < results.totalPages && (
-            <Link href={pageHref(results.page + 1)} className="border-line rounded-full border px-4 py-2">
+            <Link href={pageHref(results.page + 1)} className="border-line rounded-lg border px-4 py-2">
               Next
             </Link>
           )}

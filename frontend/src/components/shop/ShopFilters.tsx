@@ -36,7 +36,7 @@ export function ShopFilters({ categories }: { categories: CategoryNode[] }) {
 
   const band = [params.get("minPrice") ?? "", params.get("maxPrice") ?? ""].join("-");
   const selectClass =
-    "border-line focus:border-track rounded-full border bg-white py-2 pr-8 pl-3 text-sm outline-none";
+    "border-line focus:border-brand rounded-full border bg-white py-2 pr-8 pl-3 text-sm outline-none";
 
   return (
     <div className="flex flex-wrap items-center gap-3" aria-busy={pending}>
@@ -72,10 +72,10 @@ export function ShopFilters({ categories }: { categories: CategoryNode[] }) {
         ))}
       </select>
 
-      <label className="border-line flex cursor-pointer items-center gap-2 rounded-full border bg-white px-3 py-2 text-sm">
+      <label className="border-line flex cursor-pointer items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm">
         <input
           type="checkbox"
-          className="accent-track"
+          className="accent-brand"
           checked={params.get("inStock") === "true"}
           onChange={(e) => set({ inStock: e.target.checked ? "true" : null })}
         />
@@ -86,7 +86,7 @@ export function ShopFilters({ categories }: { categories: CategoryNode[] }) {
         Sort by
         <select
           id="filter-sort"
-          className={selectClass + " text-asphalt"}
+          className={selectClass + " text-ink"}
           value={params.get("sort") ?? (params.get("q") ? "relevance" : "newest")}
           onChange={(e) => set({ sort: e.target.value })}
         >

@@ -3,7 +3,7 @@ import { LANES } from "@/lib/nav";
 
 export function SiteFooter() {
   return (
-    <footer className="bg-asphalt text-lane mt-24">
+    <footer className="bg-navy text-white mt-24">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[2fr_1fr_1fr]">
         <div>
           <p className="display text-5xl">CommerceX</p>

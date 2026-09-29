@@ -13,16 +13,16 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 10 — Premium Next.js Storefront (in progress: slice 1 of 2 done) |
-| **Current task** | Storefront slice 1 done (foundation, home, shop, product, cart drawer, auth, basic account). Next: checkout + account pages |
+| **Current phase** | Phase 11 — Admin Dashboard (next) |
+| **Current task** | Calm-navy redesign on branch `redesign/navy` (user-supplied inspiration). Full customer journey re-verified in Chrome |
 | **Last updated** | 2026-09-28 |
-| **Repo state** | Git `main`, Phase 9 = `82a9250`. Storefront slice 1 + seed script + product `colors` not yet committed |
+| **Repo state** | Branch `redesign/navy` (from `main` @ `3a2cb47`): slice 2 (checkout/account) + calm-navy redesign, not yet committed |
 | **Blockers** | None. Note: app startup varied 17–70 s on dev machine — revisit in Phase 13 performance review |
 
 ### Next up
-1. Commit storefront slice 1 (awaiting user go-ahead)
-2. Slice 2: checkout (address → shipping → coupon → review → place order with Idempotency-Key → pay with mock token → confirmation)
-3. Slice 2: account (order detail + status timeline + cancel, addresses, wishlist, reviews), homepage testimonials from approved reviews, a11y/SEO pass
+1. Commit on `redesign/navy`, then merge to `main` once the user approves the look (awaiting user go-ahead)
+2. Phase 11: `/admin` route group — KPI dashboard (needs an admin read-model endpoint), products, inventory, orders, customers, coupons, reviews
+3. Phase 12: move the ad-hoc Playwright journey into `frontend/e2e` and run it in CI
 
 ---
 
@@ -40,7 +40,7 @@
 | 7 | Payments | `[x]` |
 | 8 | Promotions + Reviews | `[x]` |
 | 9 | Kafka + Outbox + Notifications | `[x]` |
-| 10 | Premium Next.js Storefront | `[~]` |
+| 10 | Premium Next.js Storefront | `[x]` |
 | 11 | Admin Dashboard | `[ ]` |
 | 12 | Testing + Observability + CI/CD | `[ ]` |
 | 13 | Production Hardening | `[ ]` |
@@ -165,11 +165,12 @@
 - [~] Homepage: lane hero (categories as lanes), featured shoe, new arrivals, trail picks, promo, brand story, footer. **Testimonials (needs approved reviews) and newsletter (needs backend) pending**
 - [x] Product listing: URL-driven filters (category, price band, in stock, sort), pagination, empty state, skeleton
 - [x] Product detail: colour/size pickers with per-size availability, live price, add to cart, reviews summary + list, Product JSON-LD. Shared-layout transition deferred
-- [~] Cart drawer (quantity, remove, issues, coupon line, keyboard + focus handling). Wishlist UI pending
-- [ ] Checkout steps (slice 2)
-- [~] Sign in / register (guest cart merged on sign-in), account page with order list. Order detail, addresses, reviews pending
-- [~] Skeletons, empty states, inline errors; toasts pending
-- [ ] Accessibility + SEO + mobile-first pass
+- [x] Cart drawer (quantity, remove, issues, coupon line, keyboard + focus handling) and wishlist
+- [x] Checkout: address (select or add inline), delivery, discount code, test-mode payment, order summary; idempotent place-order key in sessionStorage; PRICE_CHANGED / stock / coupon errors refresh the quote with a clear message; confirmation page
+- [x] Account: orders list, order detail (fulfilment timeline, totals, address, pay now with retry, cancel unpaid, review delivered items), addresses (add, default, delete), wishlist (+ save button on product page)
+- [x] Skeletons, empty states, inline errors and status messages (no toasts: messages appear next to the action that caused them)
+- [~] Accessibility: labels, focus-visible, skip link, dialog focus handling, reduced motion, aria-live. SEO: metadata + Product JSON-LD. Automated axe/Lighthouse checks → Phase 12
+- [x] Fixed session-restore race: cart/wishlist actions made before the refresh-cookie restore finished went to a stray guest cart (found by the E2E run); leftover guest carts now merge on restore too
 
 ## Phase 11 — Admin Dashboard
 
@@ -247,6 +248,12 @@
 | D-49 | Frontend ↔ API | ✅ Decided | Browser calls same-origin `/api` (Next rewrite); server components fetch backend directly with revalidate; backend honours X-Forwarded-For from internal proxies |
 | D-50 | Session restore | ✅ Decided | Access token in memory; refresh via httpOnly cookie on load only if a non-secret `cx_has_session` hint exists |
 | D-51 | Product imagery | ⏳ Open | Tinted SVG silhouettes until photography/asset storage (upload pipeline not built) |
+| D-52 | Guest checkout | ✅ Decided | Not supported (orders belong to accounts); checkout sends guests to sign in and their cart follows them |
+| D-53 | Payment UI | ✅ Decided | Test-mode picker of mock cards, clearly labelled; replaced by the real provider's card element (D-39) |
+| D-55 | Visual direction | ✅ Decided (superseded) | v1 "lanes" too plain; v2 "night track" rejected by user as too heavy |
+| D-56 | Visual direction v3 | ⏳ Awaiting approval | Calm navy (Plus Jakarta Sans, navy/white, comparison table, numbered steps), light motion; on branch `redesign/navy` |
+| D-57 | Hero + auth layout | ✅ Decided (user choice) | Full-bleed photo hero; split-screen sign-in/register in an `(auth)` route group. Unsplash photos in `public/images` |
+| D-54 | Deferred storefront items | ⏳ Open | Homepage testimonials (needs a public "recent approved reviews" endpoint), newsletter (needs backend), shared-layout product transition, password-reset pages |
 
 ---
 
@@ -266,3 +273,7 @@
 | 2026-09-28 | 8 | Committed Phase 7 (`21e3222`). Built promotion module (V10: coupons, rules, atomic redemption, cart/checkout integration, release on cancel) and review module (V11: eligibility, moderation, rating aggregation). Removed a catalog↔review module cycle. Coupon concurrency test mutation-tested. `./mvnw verify` green (62 unit + 145 IT). |
 | 2026-09-28 | 9 | Committed Phase 8 (`4842523`). Built outbox + relay (V12), Kafka topics/error handling, integration events in order/auth/inventory, notification consumer, Redis rate limiter + caches; compose + Testcontainers for Kafka/Redis. `./mvnw verify` green (63 unit + 153 IT). Verified Kafka-down (events queued then delivered) and Redis-down (fallback) on local stack. |
 | 2026-09-28 | 10 | Committed Phase 9 (`82a9250`). Storefront slice 1: design plan (reviewed against generic defaults), Next.js app, API clients, providers, home/shop/product/cart/auth/account pages; catalog seed script; product summaries now include `colors`; backend honours forwarded headers. tsc + eslint clean; verified in Chrome via Playwright screenshots (desktop + mobile) and an add-to-cart flow. |
+| 2026-09-29 | 10 | Committed slice 1 (`3a2cb47`). Slice 2: checkout + confirmation, account layout, order detail (timeline, pay/retry, cancel, reviews), addresses, wishlist. Browser E2E found and fixed a session-restore race (early add-to-cart → stray guest cart; early wishlist click → sign-in redirect). Full journey passes in Chrome with no console errors; tsc + eslint clean. |
+| 2026-09-29 | 10 | Redesign on user feedback ("boring"): UI/UX Pro Max research (kept fitness palette, typography and motion rules; rejected its luxury-brutalism system), night-track hero with 3D track + shoe tilt + colourway swatches, marquee, expanding lane panels, pinned Split Racer story, new product cards and header. Fixed wishlist load/click race found by E2E. tsc + eslint clean; journey passes. |
+| 2026-09-29 | 10 | User rejected night-track design; created branch `redesign/navy` and rebuilt the UI from a supplied reference: new tokens + Plus Jakarta Sans, navy hero with product screen, comparison table, category cards, steps, offer card; restyled header, cards, buttons and all pages. Light motion only. tsc + eslint clean; E2E journey passes. |
+| 2026-09-29 | 10 | User disliked hero and login; offered 3 options each, user chose full-bleed photo hero + split-screen auth. Added Unsplash photos (no brand logos, credits file), `(store)`/`(auth)` route groups, HeroPhoto, AuthShell. tsc + eslint clean; E2E journey passes. |

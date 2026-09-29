@@ -59,7 +59,7 @@ export function CartDrawer() {
       {open && (
         <div className="fixed inset-0 z-50">
           <motion.div
-            className="bg-asphalt/40 absolute inset-0"
+            className="bg-ink/40 absolute inset-0"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -69,7 +69,7 @@ export function CartDrawer() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="cart-title"
-            className="bg-chalk absolute inset-y-0 right-0 flex w-full max-w-md flex-col shadow-2xl"
+            className="bg-surface absolute inset-y-0 right-0 flex w-full max-w-md flex-col shadow-2xl"
             initial={reduce ? { opacity: 0 } : { x: "100%" }}
             animate={reduce ? { opacity: 1 } : { x: 0 }}
             exit={reduce ? { opacity: 0 } : { x: "100%" }}
@@ -79,7 +79,7 @@ export function CartDrawer() {
               <h2 id="cart-title" className="display text-3xl">
                 Your cart
               </h2>
-              <button ref={closeRef} type="button" onClick={() => setOpen(false)} className="hover:bg-midsole rounded-full p-2" aria-label="Close cart">
+              <button ref={closeRef} type="button" onClick={() => setOpen(false)} className="hover:bg-tile rounded-full p-2" aria-label="Close cart">
                 <X aria-hidden className="h-5 w-5" />
               </button>
             </div>
@@ -87,7 +87,7 @@ export function CartDrawer() {
             {lines.length === 0 ? (
               <div className="flex flex-1 flex-col items-start justify-center gap-4 px-5">
                 <p className="text-lg">Your cart is empty.</p>
-                <Link href="/shop" onClick={() => setOpen(false)} className="bg-track hover:bg-track-deep text-lane rounded-full px-5 py-2.5 font-medium">
+                <Link href="/shop" onClick={() => setOpen(false)} className="bg-brand hover:bg-brand-deep text-white rounded-lg px-5 py-2.5 font-medium">
                   Browse the shop
                 </Link>
               </div>
@@ -96,12 +96,12 @@ export function CartDrawer() {
                 <ul className="flex-1 divide-y divide-line overflow-y-auto px-5">
                   {lines.map((line) => (
                     <li key={line.variantId} className="flex gap-4 py-4">
-                      <div className="bg-midsole h-20 w-24 shrink-0 rounded-md">
+                      <div className="bg-tile h-20 w-24 shrink-0 rounded-md">
                         <ProductArt kind={kindFromName(line.productName)} color={line.variantLabel?.split(" / ")[0]} label="" className="h-full w-full p-2" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex justify-between gap-2">
-                          <Link href={`/p/${line.productSlug}`} onClick={() => setOpen(false)} className="condensed font-semibold leading-tight hover:text-track">
+                          <Link href={`/p/${line.productSlug}`} onClick={() => setOpen(false)} className="condensed font-semibold leading-tight hover:text-brand">
                             {line.productName ?? "Unavailable item"}
                           </Link>
                           {line.lineTotal && <span className="figures font-semibold">{formatMoney(line.lineTotal)}</span>}
@@ -135,7 +135,7 @@ export function CartDrawer() {
                               <Plus aria-hidden className="h-3.5 w-3.5" />
                             </button>
                           </div>
-                          <button type="button" onClick={() => run(() => remove(line.variantId))} className="text-mute text-sm underline underline-offset-2 hover:text-asphalt">
+                          <button type="button" onClick={() => run(() => remove(line.variantId))} className="text-mute text-sm underline underline-offset-2 hover:text-ink">
                             Remove
                           </button>
                         </div>
@@ -155,7 +155,7 @@ export function CartDrawer() {
                       <dd>{cart && formatMoney(cart.subtotal)}</dd>
                     </div>
                     {cart?.coupon?.valid && (
-                      <div className="flex justify-between text-track">
+                      <div className="flex justify-between text-brand">
                         <dt>Code {cart.coupon.code}</dt>
                         <dd>−{formatMoney(cart.discount)}</dd>
                       </div>
@@ -169,8 +169,8 @@ export function CartDrawer() {
                     href="/checkout"
                     onClick={() => setOpen(false)}
                     aria-disabled={!cart?.checkoutReady}
-                    className={`block rounded-full py-3 text-center font-semibold ${
-                      cart?.checkoutReady ? "bg-track text-lane hover:bg-track-deep" : "bg-midsole text-mute pointer-events-none"
+                    className={`block rounded-lg py-3 text-center font-semibold ${
+                      cart?.checkoutReady ? "bg-brand text-white hover:bg-brand-deep" : "bg-tile text-mute pointer-events-none"
                     }`}
                   >
                     Check out

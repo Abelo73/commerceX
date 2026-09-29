@@ -40,6 +40,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [cart, setCart] = useState<Cart | null>(null);
   const [open, setOpen] = useState(false);
+  // Resolves once the session has been restored (or found absent). Cart writes wait for it, otherwise an
+  // early click would go out without the access token and land in a stray guest cart.
+  const [sessionRestored] = useState(() => {
+    let resolve!: () => void;
+    const promise = new Promise<void>((r) => (resolve = r));
+    return { promise, resolve };
+  });
+  const whenRestored = useCallback(() => sessionRestored.promise, [sessionRestored]);
 
   const refresh = useCallback(async () => {
     try {
@@ -57,10 +65,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
       if (token && !cancelled) {
         try {
           setUser(await api<User>("/me"));
+          if (cartToken()) {
+            // A guest cart left over from before (or from another tab) joins the account.
+            await api<Cart>("/cart/merge", { method: "POST" }).catch(() => undefined);
+            setCartToken(null);
+          }
         } catch {
           setUser(null);
         }
       }
+      sessionRestored.resolve();
       if (!cancelled) {
         setReady(true);
         await refresh();
@@ -69,7 +83,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [refresh]);
+  }, [refresh, sessionRestored]);
 
   const afterSignIn = useCallback(
     async (response: AuthResponse) => {
@@ -110,6 +124,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       setOpen,
       refresh,
       add: async (variantId, quantity) => {
+        await whenRestored();
         const result = await api<{ cart: Cart }>("/cart/items", {
           method: "POST",
           body: { variantId, quantity },
@@ -118,13 +133,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
         setOpen(true);
       },
       update: async (variantId, quantity) => {
+        await whenRestored();
         setCart(await api<Cart>(`/cart/items/${variantId}`, { method: "PATCH", body: { quantity } }));
       },
       remove: async (variantId) => {
+        await whenRestored();
         setCart(await api<Cart>(`/cart/items/${variantId}`, { method: "DELETE" }));
       },
     }),
-    [cart, open, refresh],
+    [cart, open, refresh, whenRestored],
   );
 
   return (

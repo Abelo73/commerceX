@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AuthShell } from "@/components/auth/AuthShell";
 import { Field } from "@/components/forms/Field";
 import { ApiError, useAuth } from "@/components/providers";
 
@@ -32,9 +33,13 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md px-4 py-16">
-      <h1 className="display text-6xl">Create an account</h1>
-      <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
+    <AuthShell
+      image="/images/auth-road.jpg"
+      imageAlt="A runner on an open country road under a wide sky"
+      title="Create your account"
+      subtitle="It takes a minute. Your cart comes with you."
+    >
+      <form onSubmit={onSubmit} className="space-y-5" noValidate>
         <div className="grid grid-cols-2 gap-4">
           <Field label="First name" name="firstName" autoComplete="given-name" required error={error?.fieldError("firstName")} />
           <Field label="Last name" name="lastName" autoComplete="family-name" required error={error?.fieldError("lastName")} />
@@ -54,16 +59,16 @@ export default function RegisterPage() {
             {error.code === "EMAIL_ALREADY_REGISTERED" ? "An account with this email already exists. Sign in instead." : error.message}
           </p>
         )}
-        <button disabled={busy} className="bg-track hover:bg-track-deep text-lane w-full rounded-full py-3 font-semibold disabled:opacity-60">
+        <button disabled={busy} className="bg-brand hover:bg-brand-deep text-white w-full rounded-lg py-3 font-semibold disabled:opacity-60">
           {busy ? "Creating account…" : "Create account"}
         </button>
         <p className="text-mute text-sm">
           Already have an account?{" "}
-          <Link href="/login" className="text-track font-medium underline underline-offset-4">
+          <Link href="/login" className="text-brand font-medium underline underline-offset-4">
             Sign in
           </Link>
         </p>
       </form>
-    </div>
+    </AuthShell>
   );
 }

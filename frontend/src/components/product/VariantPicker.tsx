@@ -6,6 +6,8 @@ import { colorwayHex } from "@/lib/colors";
 import type { ProductDetail, Variant } from "@/lib/types";
 import { Price } from "./Price";
 import { ProductArt, artKind } from "./ProductArt";
+import { HeroShoe } from "./HeroShoe";
+import { WishlistButton } from "./WishlistButton";
 
 const AVAILABILITY_TEXT = {
   IN_STOCK: "In stock, ships in 1–2 days",
@@ -59,8 +61,12 @@ export function VariantPicker({ product }: { product: ProductDetail }) {
 
   return (
     <div className="grid gap-10 md:grid-cols-[1.2fr_1fr]">
-      <div className="bg-midsole relative aspect-[4/3] rounded-2xl md:sticky md:top-24 md:self-start">
-        <ProductArt kind={kind} color={selection.Color ?? colorOption?.values[0]} label={`${product.name} in ${selection.Color ?? ""}`} className="absolute inset-0 h-full w-full p-10" />
+      <div className="bg-tile relative aspect-[4/3] rounded-2xl md:sticky md:top-24 md:self-start">
+        {kind === "shoe" ? (
+          <HeroShoe color={selection.Color ?? colorOption?.values[0]} label={`${product.name} in ${selection.Color ?? ""}`} className="absolute inset-0 m-auto h-full w-full p-8" />
+        ) : (
+          <ProductArt kind={kind} color={selection.Color ?? colorOption?.values[0]} label={`${product.name} in ${selection.Color ?? ""}`} className="absolute inset-0 h-full w-full p-10" />
+        )}
       </div>
 
       <div>
@@ -70,6 +76,9 @@ export function VariantPicker({ product }: { product: ProductDetail }) {
           <Price price={selected?.price ?? product.price} compareAt={selected?.compareAtPrice ?? product.compareAtPrice} from={!selected} />
         </div>
         {product.shortDescription && <p className="mt-4 max-w-prose text-lg">{product.shortDescription}</p>}
+        <div className="mt-4">
+          <WishlistButton productId={product.id} slug={product.slug} />
+        </div>
 
         {colorOption && (
           <fieldset className="mt-8">
@@ -88,7 +97,7 @@ export function VariantPicker({ product }: { product: ProductDetail }) {
                     className="peer sr-only"
                   />
                   <span
-                    className="ring-line peer-checked:ring-track peer-focus-visible:outline-track block h-10 w-10 rounded-full ring-1 ring-offset-2 ring-offset-chalk peer-checked:ring-2 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4"
+                    className="ring-line peer-checked:ring-brand peer-focus-visible:outline-brand block h-10 w-10 rounded-full ring-1 ring-offset-2 ring-offset-surface peer-checked:ring-2 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4"
                     style={{ backgroundColor: colorwayHex(color) }}
                   />
                   <span className="sr-only">{color}</span>
@@ -116,7 +125,7 @@ export function VariantPicker({ product }: { product: ProductDetail }) {
                       onChange={() => setSelection((s) => ({ ...s, [option.name]: value }))}
                       className="peer sr-only"
                     />
-                    <span className="border-line peer-checked:bg-asphalt peer-checked:text-lane peer-checked:border-asphalt peer-focus-visible:outline-track figures block rounded-md border bg-white py-2.5 text-center text-sm peer-disabled:bg-transparent peer-disabled:text-mute/60 peer-disabled:line-through peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2">
+                    <span className="border-line peer-checked:bg-ink peer-checked:text-white peer-checked:border-ink peer-focus-visible:outline-brand figures block rounded-md border bg-white py-2.5 text-center text-sm peer-disabled:bg-transparent peer-disabled:text-mute/60 peer-disabled:line-through peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2">
                       {value}
                     </span>
                   </label>
@@ -134,7 +143,7 @@ export function VariantPicker({ product }: { product: ProductDetail }) {
             type="button"
             onClick={addToCart}
             disabled={!selected || selected.availability === "OUT_OF_STOCK" || busy}
-            className="bg-track hover:bg-track-deep text-lane disabled:bg-midsole disabled:text-mute mt-3 w-full rounded-full py-4 text-lg font-semibold transition-colors"
+            className="bg-brand hover:bg-brand-deep text-white disabled:bg-tile disabled:text-mute mt-3 w-full rounded-lg py-4 text-lg font-semibold transition-colors"
           >
             {busy ? "Adding…" : "Add to cart"}
           </button>

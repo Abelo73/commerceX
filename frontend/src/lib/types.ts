@@ -110,3 +110,93 @@ export type User = {
   lastName: string;
   roles: string[];
 };
+
+export type Address = {
+  id: number;
+  label?: string;
+  fullName: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  region?: string;
+  postalCode: string;
+  country: string;
+  phone?: string;
+  isDefault: boolean;
+};
+
+export type ShippingOption = { code: string; name: string; price: Money; minDays: number; maxDays: number };
+
+export type Quote = {
+  lines: { variantId: number; productName?: string; variantLabel?: string; quantity: number; unitPrice?: Money; lineTotal?: Money; issue?: string }[];
+  subtotal: Money;
+  discount: Money;
+  shipping: Money;
+  tax: Money;
+  total: Money;
+  couponCode?: string;
+  shippingMethod: string;
+  shippingOptions: ShippingOption[];
+  ready: boolean;
+  problems: string[];
+};
+
+export type OrderStatus =
+  | "PENDING_PAYMENT"
+  | "PAYMENT_FAILED"
+  | "PAID"
+  | "PROCESSING"
+  | "PACKED"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "CANCELLED"
+  | "REFUNDED";
+
+export type OrderDetails = {
+  id: number;
+  orderNumber: string;
+  status: OrderStatus;
+  items: {
+    variantId: number;
+    productId: number;
+    productName: string;
+    variantLabel?: string;
+    sku: string;
+    unitPrice: Money;
+    quantity: number;
+    lineTotal: Money;
+  }[];
+  subtotal: Money;
+  discount: Money;
+  shipping: Money;
+  tax: Money;
+  total: Money;
+  couponCode?: string;
+  shippingMethod: string;
+  shippingAddress: Omit<Address, "id" | "isDefault" | "label">;
+  customerEmail: string;
+  placedAt: string;
+  paymentDueAt: string;
+  history: { from?: string; to: string; reason?: string; at: string }[];
+};
+
+export type Payment = {
+  id: number;
+  status: "PENDING" | "REQUIRES_ACTION" | "SUCCEEDED" | "FAILED";
+  amount: Money;
+  failureCode?: string;
+  failureMessage?: string;
+  nextActionUrl?: string;
+  createdAt: string;
+};
+
+export type WishlistItem = {
+  productId: number;
+  slug: string;
+  name: string;
+  price?: Money;
+  imageUrl?: string;
+  inStock: boolean;
+  available: boolean;
+  addedAt: string;
+};

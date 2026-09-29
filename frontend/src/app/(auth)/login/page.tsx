@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { AuthShell } from "@/components/auth/AuthShell";
 import { Field } from "@/components/forms/Field";
 import { ApiError, useAuth } from "@/components/providers";
 
@@ -28,7 +29,7 @@ function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
+    <form onSubmit={onSubmit} className="space-y-5" noValidate>
       <Field label="Email" name="email" type="email" autoComplete="email" required error={error?.fieldError("email")} />
       <Field label="Password" name="password" type="password" autoComplete="current-password" required error={error?.fieldError("password")} />
       {error && !error.problem.errors && (
@@ -36,12 +37,12 @@ function LoginForm() {
           {error.code === "INVALID_CREDENTIALS" ? "That email and password don’t match. Check them and try again." : error.message}
         </p>
       )}
-      <button disabled={busy} className="bg-track hover:bg-track-deep text-lane w-full rounded-full py-3 font-semibold disabled:opacity-60">
+      <button disabled={busy} className="bg-brand hover:bg-brand-deep text-white w-full rounded-lg py-3 font-semibold disabled:opacity-60">
         {busy ? "Signing in…" : "Sign in"}
       </button>
       <p className="text-mute text-sm">
         New to CommerceX?{" "}
-        <Link href="/register" className="text-track font-medium underline underline-offset-4">
+        <Link href="/register" className="text-brand font-medium underline underline-offset-4">
           Create an account
         </Link>
       </p>
@@ -51,11 +52,15 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="mx-auto max-w-md px-4 py-16">
-      <h1 className="display text-6xl">Sign in</h1>
+    <AuthShell
+      image="/images/auth-trail.jpg"
+      imageAlt="A trail runner cresting a grassy hill above the mountains"
+      title="Welcome back"
+      subtitle="Sign in to track orders and check out faster."
+    >
       <Suspense>
         <LoginForm />
       </Suspense>
-    </div>
+    </AuthShell>
   );
 }

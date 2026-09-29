@@ -60,8 +60,8 @@ export default async function ProductPage({ params }: { params: Params }) {
                 {Object.entries(reviews.summary.distribution).map(([stars, count]) => (
                   <div key={stars} className="flex items-center gap-2">
                     <dt className="w-10">{stars} star</dt>
-                    <dd className="bg-midsole h-2 flex-1 rounded-full">
-                      <span className="bg-track block h-2 rounded-full" style={{ width: `${(count / reviews.summary.count) * 100}%` }} />
+                    <dd className="bg-tile h-2 flex-1 rounded-full">
+                      <span className="bg-brand block h-2 rounded-full" style={{ width: `${(count / reviews.summary.count) * 100}%` }} />
                     </dd>
                     <dd className="w-6 text-right">{count}</dd>
                   </div>
@@ -73,7 +73,7 @@ export default async function ProductPage({ params }: { params: Params }) {
                 <li key={review.id} className="py-5 first:pt-0">
                   <p className="flex items-center gap-1" aria-label={`${review.rating} out of 5 stars`}>
                     {Array.from({ length: 5 }, (_, i) => (
-                      <Star key={i} aria-hidden className={`h-4 w-4 ${i < review.rating ? "fill-track text-track" : "text-line"}`} />
+                      <Star key={i} aria-hidden className={`h-4 w-4 ${i < review.rating ? "fill-brand text-brand" : "text-line"}`} />
                     ))}
                   </p>
                   <h3 className="mt-2 font-semibold">{review.title}</h3>
