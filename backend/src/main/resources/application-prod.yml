@@ -5,7 +5,7 @@ logging:
       console: logstash
 
 server:
-  forward-headers-strategy: native   # trust X-Forwarded-* from the load balancer only
+  forward-headers-strategy: native   # trust X-Forwarded-* from internal proxies only
 
 management:
   server:

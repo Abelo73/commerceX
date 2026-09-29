@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/*
+ * CommerceX design tokens.
+ * Track blue (the brand) on chalk; asphalt for type; split red only for sale prices and low stock.
+ */
+@theme {
+  --color-chalk: #f4f6f8;
+  --color-asphalt: #1d2430;
+  --color-mute: #545d6d;
+  --color-line: #d5dbe5;
+  --color-midsole: #e3e8f2;
+  --color-track: #2451c9;
+  --color-track-deep: #1b3e9e;
+  --color-lane: #ffffff;
+  --color-split: #c9302f;
+
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --text-4xl: 3rem;
+  --text-5xl: 4rem;
+  --text-6xl: 6rem;
+}
+
+/* Condensed display type: the brand's voice. Width comes from Archivo's wdth axis. */
+@utility display {
+  font-variation-settings: "wdth" 62;
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -0.005em;
+}
+
+@utility condensed {
+  font-variation-settings: "wdth" 75;
+}
+
+@utility figures {
+  font-variant-numeric: tabular-nums;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-chalk);
+    color: var(--color-asphalt);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.55;
+    text-rendering: optimizeLegibility;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-track);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: var(--color-track);
+    color: var(--color-lane);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

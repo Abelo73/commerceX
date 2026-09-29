@@ -53,7 +53,8 @@ public final class CatalogViews {
             boolean inStock,
             BrandRef brand,
             CategorySummary category,
-            ImageView image) {
+            ImageView image,
+            List<String> colors) {
     }
 
     public record OptionView(String name, List<String> values) {

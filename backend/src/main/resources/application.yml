@@ -66,6 +66,9 @@ spring:
 server:
   port: ${PORT:8080}
   shutdown: graceful
+  # Honour X-Forwarded-For/-Proto only from internal proxies (Tomcat's default trusted ranges), e.g. the
+  # Next.js server that proxies /api. Client IPs then feed rate limits and audit logs correctly.
+  forward-headers-strategy: native
   error:
     include-stacktrace: never
     include-message: never

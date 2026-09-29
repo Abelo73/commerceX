@@ -2,6 +2,7 @@ package com.commercex.catalog.application;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 /** One row of the public listing, straight from the search query. */
 public record ProductSummaryRow(
@@ -20,5 +21,6 @@ public record ProductSummaryRow(
         String brandSlug,
         String imageUrl,
         String imageAlt,
+        List<String> colors,
         Instant publishedAt) {
 }

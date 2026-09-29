@@ -13,16 +13,16 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 10 — Premium Next.js Storefront (next) |
-| **Current task** | Phase 9 complete — `./mvnw verify` green (63 unit + 153 integration tests); outage behaviour verified on local stack |
+| **Current phase** | Phase 10 — Premium Next.js Storefront (in progress: slice 1 of 2 done) |
+| **Current task** | Storefront slice 1 done (foundation, home, shop, product, cart drawer, auth, basic account). Next: checkout + account pages |
 | **Last updated** | 2026-09-28 |
-| **Repo state** | Git `main`, Phase 8 = `4842523`. Phase 9 (outbox, Kafka, notifications, Redis, V12) not yet committed |
+| **Repo state** | Git `main`, Phase 9 = `82a9250`. Storefront slice 1 + seed script + product `colors` not yet committed |
 | **Blockers** | None. Note: app startup varied 17–70 s on dev machine — revisit in Phase 13 performance review |
 
 ### Next up
-1. Commit Phase 9 (awaiting user go-ahead)
-2. Phase 10: scaffold `frontend/` (Next.js App Router + TypeScript + Tailwind + Framer Motion + Lucide), design system, API client (same-site `/api` rewrite, refresh-cookie flow, cart token)
-3. Phase 10: home, listing/filters, product detail, cart drawer, checkout, account pages
+1. Commit storefront slice 1 (awaiting user go-ahead)
+2. Slice 2: checkout (address → shipping → coupon → review → place order with Idempotency-Key → pay with mock token → confirmation)
+3. Slice 2: account (order detail + status timeline + cancel, addresses, wishlist, reviews), homepage testimonials from approved reviews, a11y/SEO pass
 
 ---
 
@@ -40,7 +40,7 @@
 | 7 | Payments | `[x]` |
 | 8 | Promotions + Reviews | `[x]` |
 | 9 | Kafka + Outbox + Notifications | `[x]` |
-| 10 | Premium Next.js Storefront | `[ ]` |
+| 10 | Premium Next.js Storefront | `[~]` |
 | 11 | Admin Dashboard | `[ ]` |
 | 12 | Testing + Observability + CI/CD | `[ ]` |
 | 13 | Production Hardening | `[ ]` |
@@ -160,15 +160,15 @@
 
 ## Phase 10 — Premium Next.js Storefront
 
-- [ ] Next.js + TypeScript + Tailwind + Framer Motion + Lucide in `frontend/`
-- [ ] Design system (typography, colors, spacing tokens)
-- [ ] Homepage: hero, featured, new arrivals, trending, categories, promo, brand story, testimonials, newsletter, footer
-- [ ] Product listing with filters
-- [ ] Product detail with variant selection + shared-layout transition
-- [ ] Cart drawer, wishlist
-- [ ] Checkout steps
-- [ ] Account: orders, tracking, addresses, reviews
-- [ ] Skeletons, empty/error states, toasts
+- [x] Next.js 16.3 + TypeScript + Tailwind 4 + Motion 13 (Framer Motion successor) + Lucide in `frontend/`; `/api` proxied same-site
+- [x] Design system: running brand "CommerceX" — chalk/asphalt/track-blue tokens, Archivo width axis, lane motif (docs/pages.md)
+- [~] Homepage: lane hero (categories as lanes), featured shoe, new arrivals, trail picks, promo, brand story, footer. **Testimonials (needs approved reviews) and newsletter (needs backend) pending**
+- [x] Product listing: URL-driven filters (category, price band, in stock, sort), pagination, empty state, skeleton
+- [x] Product detail: colour/size pickers with per-size availability, live price, add to cart, reviews summary + list, Product JSON-LD. Shared-layout transition deferred
+- [~] Cart drawer (quantity, remove, issues, coupon line, keyboard + focus handling). Wishlist UI pending
+- [ ] Checkout steps (slice 2)
+- [~] Sign in / register (guest cart merged on sign-in), account page with order list. Order detail, addresses, reviews pending
+- [~] Skeletons, empty states, inline errors; toasts pending
 - [ ] Accessibility + SEO + mobile-first pass
 
 ## Phase 11 — Admin Dashboard
@@ -243,6 +243,10 @@
 | D-45 | Event contract | ✅ Decided | Envelope `{eventId, type, occurredAt, data}`, versioned payload records (`…V1`), additive changes only; secrets never externalized |
 | D-46 | Delivery semantics | ✅ Decided | At-least-once relay + consumer dedup by eventId; no strict cross-event ordering guarantee |
 | D-47 | Redis failure mode | ✅ Decided | Fail open to per-instance limits / DB reads; circuit breaker to cut timeout latency in Phase 13 |
+| D-48 | Storefront brand | ✅ Decided | Running & sneakers store branded CommerceX (user choice); categories Road / Trail / Track / Apparel |
+| D-49 | Frontend ↔ API | ✅ Decided | Browser calls same-origin `/api` (Next rewrite); server components fetch backend directly with revalidate; backend honours X-Forwarded-For from internal proxies |
+| D-50 | Session restore | ✅ Decided | Access token in memory; refresh via httpOnly cookie on load only if a non-secret `cx_has_session` hint exists |
+| D-51 | Product imagery | ⏳ Open | Tinted SVG silhouettes until photography/asset storage (upload pipeline not built) |
 
 ---
 
@@ -261,3 +265,4 @@
 | 2026-09-28 | 7 | Committed Phase 6 (`b9d40ef`). Built payment module (V9): provider port + mock, payments/refunds outside DB tx, signed deduplicated webhooks, reconciliation, auto-refund of late payments. `OrderApi.markPaid` now returns boolean. `./mvnw verify` green (57 unit + 133 IT). |
 | 2026-09-28 | 8 | Committed Phase 7 (`21e3222`). Built promotion module (V10: coupons, rules, atomic redemption, cart/checkout integration, release on cancel) and review module (V11: eligibility, moderation, rating aggregation). Removed a catalog↔review module cycle. Coupon concurrency test mutation-tested. `./mvnw verify` green (62 unit + 145 IT). |
 | 2026-09-28 | 9 | Committed Phase 8 (`4842523`). Built outbox + relay (V12), Kafka topics/error handling, integration events in order/auth/inventory, notification consumer, Redis rate limiter + caches; compose + Testcontainers for Kafka/Redis. `./mvnw verify` green (63 unit + 153 IT). Verified Kafka-down (events queued then delivered) and Redis-down (fallback) on local stack. |
+| 2026-09-28 | 10 | Committed Phase 9 (`82a9250`). Storefront slice 1: design plan (reviewed against generic defaults), Next.js app, API clients, providers, home/shop/product/cart/auth/account pages; catalog seed script; product summaries now include `colors`; backend honours forwarded headers. tsc + eslint clean; verified in Chrome via Playwright screenshots (desktop + mobile) and an add-to-cart flow. |

@@ -19,7 +19,8 @@ docker compose -f infra/docker-compose.yml up -d   # dependencies
 cd backend && ./mvnw verify                        # unit (*Test) + Testcontainers integration (*IT) tests
 cd backend && ./mvnw spring-boot:test-run          # run app on throwaway Testcontainers Postgres
 cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
-cd frontend && npm run dev
+python3 infra/seed/seed_catalog.py                # sample running catalog + FIRSTRUN coupon (local profile)
+cd frontend && npm run dev                         # http://localhost:3000 (proxies /api to :8080)
 ```
 
 ## Gotchas
@@ -31,6 +32,11 @@ cd frontend && npm run dev
 - Mock payment tokens: `tok_success`, `tok_decline`, `tok_3ds`, `tok_pending`, `tok_timeout` (charges then times out), `tok_unavailable`. `commercex.payments.webhook-secret` (≥ 32 chars) is required at startup.
 - Never call a payment provider inside a DB transaction: record (tx) → call → apply (tx), see `PaymentService`.
 - Integration tests must extend `AbstractIntegrationTest` without extra context-changing annotations, so all share one context + container.
+
+## Frontend rules
+- Next.js 16: read `frontend/node_modules/next/dist/docs/` before using an API; `params`/`searchParams` are Promises.
+- Catalog pages are Server Components using `serverGet` (fetch + revalidate); interactive state uses `useCart`/`useAuth` from `components/providers.tsx` and `api()` from `lib/client-api.ts` (never call the backend origin from the browser).
+- Tokens live in `src/app/globals.css` (`@theme`); use them, not raw colours. One animated moment per page at most; respect reduced motion.
 
 ## Non-negotiable rules
 - Build in phase order; one vertical slice at a time. Don't rewrite unrelated code.

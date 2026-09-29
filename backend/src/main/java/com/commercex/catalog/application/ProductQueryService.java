@@ -80,7 +80,8 @@ public class ProductQueryService {
                 r.ratingAvg(), r.reviewCount(), r.inStock(),
                 r.brandSlug() == null ? null : new BrandRef(r.brandName(), r.brandSlug()),
                 CategorySummary.from(categoryRefs.get(r.categoryId())),
-                r.imageUrl() == null ? null : new ImageView(r.imageUrl(), r.imageAlt())));
+                r.imageUrl() == null ? null : new ImageView(r.imageUrl(), r.imageAlt()),
+                r.colors()));
     }
 
     @Transactional(readOnly = true)

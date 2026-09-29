@@ -60,6 +60,7 @@ class CatalogSearchIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.content[*].name").value(contains("In Child", "In Root")))
                 .andExpect(jsonPath("$.content[0].price.amount").value(2_000))
                 .andExpect(jsonPath("$.content[0].category.id").value(childId))
+                .andExpect(jsonPath("$.content[0].colors[0]").value("Black"))
                 .andExpect(jsonPath("$.content[0].image.url").value(containsString("https://cdn.example.com/")));
     }
 

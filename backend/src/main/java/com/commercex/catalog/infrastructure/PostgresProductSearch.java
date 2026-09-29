@@ -94,7 +94,8 @@ class PostgresProductSearch implements ProductSearch {
                 SELECT p.id, p.slug, p.name, p.short_description, p.currency, p.min_price_minor,
                        p.rating_avg, p.review_count, p.in_stock, p.category_id, p.published_at,
                        b.name AS brand_name, b.slug AS brand_slug,
-                       cheapest.compare_at_price_minor, img.url AS image_url, img.alt_text AS image_alt
+                       cheapest.compare_at_price_minor, img.url AS image_url, img.alt_text AS image_alt,
+                       swatches.colors
                 """ + from + """
                  LEFT JOIN LATERAL (
                      SELECT v.compare_at_price_minor FROM product_variants v
@@ -103,10 +104,20 @@ class PostgresProductSearch implements ProductSearch {
                  LEFT JOIN LATERAL (
                      SELECT i.url, i.alt_text FROM product_images i
                      WHERE i.product_id = p.id ORDER BY i.position LIMIT 1) img ON TRUE
+                 LEFT JOIN LATERAL (
+                     SELECT array_agg(c.color ORDER BY c.first_position) AS colors
+                     FROM (SELECT v.option_values ->> 'Color' AS color, min(v.position) AS first_position
+                           FROM product_variants v
+                           WHERE v.product_id = p.id AND v.is_active AND v.option_values ->> 'Color' IS NOT NULL
+                           GROUP BY 1) c) swatches ON TRUE
                 """ + whereSql + " ORDER BY " + orderBy + ", p.id DESC LIMIT :limit OFFSET :offset";
 
         List<ProductSummaryRow> rows = jdbc.query(sql, params, PostgresProductSearch::map);
         return new PageImpl<>(rows, PageRequest.of(c.page(), c.size()), total);
+    }
+
+    private static List<String> colors(java.sql.Array array) throws SQLException {
+        return array == null ? List.of() : List.of((String[]) array.getArray());
     }
 
     private static ProductSummaryRow map(ResultSet rs, int rowNum) throws SQLException {
@@ -127,6 +138,7 @@ class PostgresProductSearch implements ProductSearch {
                 rs.getString("brand_slug"),
                 rs.getString("image_url"),
                 rs.getString("image_alt"),
+                colors(rs.getArray("colors")),
                 publishedAt != null ? publishedAt.toInstant() : null);
     }
 }
