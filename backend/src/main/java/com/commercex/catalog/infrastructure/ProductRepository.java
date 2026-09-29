@@ -17,6 +17,8 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     boolean existsByBrandId(long brandId);
 
+    long countByStatus(ProductStatus status);
+
     Optional<Product> findBySlugAndStatus(String slug, ProductStatus status);
 
     @Modifying

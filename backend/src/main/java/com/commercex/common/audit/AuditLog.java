@@ -4,6 +4,8 @@ import com.commercex.common.web.CorrelationIdFilter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +47,24 @@ public class AuditLog {
                 """,
                 actorUserId, action, resourceType, resourceId != null ? resourceId.toString() : null,
                 ip, userAgent, CorrelationIdFilter.current(), toJson(details));
+    }
+
+    public record Entry(long id, Long actorUserId, String action, String resourceType, String resourceId,
+            Instant at) {
+    }
+
+    /** Most recent entries, excluding sign-in and account-security noise (dashboard activity feed). */
+    @Transactional(readOnly = true)
+    public List<Entry> recent(int limit) {
+        return jdbc.query("""
+                SELECT id, actor_user_id, action, resource_type, resource_id, created_at FROM audit_log
+                WHERE action NOT LIKE 'LOGIN%' AND action NOT LIKE 'PASSWORD%' AND action NOT LIKE 'REFRESH_TOKEN%'
+                  AND action NOT IN ('LOGOUT', 'USER_REGISTERED')
+                ORDER BY created_at DESC, id DESC
+                LIMIT ?""",
+                (rs, n) -> new Entry(rs.getLong("id"), rs.getObject("actor_user_id", Long.class), rs.getString("action"),
+                        rs.getString("resource_type"), rs.getString("resource_id"),
+                        rs.getTimestamp("created_at").toInstant()), limit);
     }
 
     public void record(Long actorUserId, String action) {

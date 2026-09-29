@@ -22,4 +22,6 @@ public interface CatalogApi {
 
     /** ID of the PUBLISHED product with this slug. */
     Optional<Long> publishedProductId(String slug);
+
+    long publishedProductCount();
 }

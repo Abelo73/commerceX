@@ -2,6 +2,7 @@ package com.commercex.auth.infrastructure;
 
 import com.commercex.auth.domain.Role;
 import com.commercex.auth.domain.User;
+import java.time.Instant;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,4 +20,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsWithRole(Role role);
 
     Page<User> findByEmailContainingIgnoreCase(String emailFragment, Pageable pageable);
+
+    @Query("select count(u) from User u join u.roles r where r = com.commercex.auth.domain.Role.CUSTOMER")
+    long countCustomers();
+
+    @Query("select count(u) from User u join u.roles r where r = com.commercex.auth.domain.Role.CUSTOMER "
+            + "and u.createdAt >= :from")
+    long countCustomersSince(Instant from);
 }

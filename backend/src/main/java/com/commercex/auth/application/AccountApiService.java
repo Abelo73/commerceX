@@ -2,10 +2,12 @@ package com.commercex.auth.application;
 
 import com.commercex.auth.AccountApi;
 import com.commercex.auth.CustomerInfo;
+import com.commercex.auth.CustomerStats;
 import com.commercex.auth.ShippingAddress;
 import com.commercex.auth.domain.AddressDetails;
 import com.commercex.auth.infrastructure.AddressRepository;
 import com.commercex.auth.infrastructure.UserRepository;
+import java.time.Instant;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +28,12 @@ class AccountApiService implements AccountApi {
     public Optional<CustomerInfo> customer(long userId) {
         return users.findById(userId).map(u -> new CustomerInfo(u.getId(), u.getEmail(), u.getFirstName(),
                 u.getLastName(), u.isActive()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CustomerStats customerStats(Instant from) {
+        return new CustomerStats(users.countCustomers(), users.countCustomersSince(from));
     }
 
     @Override

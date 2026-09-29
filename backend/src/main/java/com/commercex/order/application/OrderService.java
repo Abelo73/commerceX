@@ -12,16 +12,19 @@ import com.commercex.order.OrderApi;
 import com.commercex.order.OrderDetails;
 import com.commercex.order.OrderPlaced;
 import com.commercex.order.OrderRef;
+import com.commercex.order.OrderStats;
 import com.commercex.order.OrderStatusChanged;
 import com.commercex.order.PlaceOrderCommand;
 import com.commercex.order.domain.Order;
 import com.commercex.order.domain.OrderStatus;
 import com.commercex.order.infrastructure.OrderRepository;
+import com.commercex.order.infrastructure.OrderStatsQuery;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -39,15 +42,20 @@ public class OrderService implements OrderApi {
     }
 
     private final OrderRepository orders;
+    private final OrderStatsQuery statsQuery;
+    private final String currency;
     private final InventoryApi inventory;
     private final OrderProperties properties;
     private final ApplicationEventPublisher events;
     private final AuditLog auditLog;
     private final Clock clock;
 
-    OrderService(OrderRepository orders, InventoryApi inventory, OrderProperties properties,
-            ApplicationEventPublisher events, AuditLog auditLog, Clock clock) {
+    OrderService(OrderRepository orders, OrderStatsQuery statsQuery, InventoryApi inventory,
+            OrderProperties properties, ApplicationEventPublisher events, AuditLog auditLog, Clock clock,
+            @Value("${commercex.catalog.currency}") String currency) {
         this.orders = orders;
+        this.statsQuery = statsQuery;
+        this.currency = currency;
         this.inventory = inventory;
         this.properties = properties;
         this.events = events;
@@ -115,6 +123,12 @@ public class OrderService implements OrderApi {
     @Transactional(readOnly = true)
     public Optional<Long> deliveredOrderContaining(long userId, long productId) {
         return orders.findDeliveredOrderIdsContaining(userId, productId).stream().findFirst();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderStats stats(Instant from) {
+        return statsQuery.stats(from, currency);
     }
 
     @Override

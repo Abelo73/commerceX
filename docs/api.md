@@ -96,7 +96,8 @@ POST /payments/webhooks/{provider}         🌐  header X-CommerceX-Signature: t
 
 ### Admin (`/admin/...`)
 ```text
-GET    /admin/dashboard                    🛠
+GET    /admin/dashboard?days=1..90     🛠🚚  KPIs for the last N UTC days incl. today, daily revenue series, recent staff activity
+GET    /admin/stock?lowStockOnly=&page=&size=  🛠🚚  inventory rows with product name, SKU and variant label
 GET    /admin/products?status=&q=          🛠📦
 GET    /admin/products/{id}                🛠📦
 POST   /admin/products                     🛠📦  full document incl. variants → DRAFT

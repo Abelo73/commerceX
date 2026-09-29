@@ -25,7 +25,7 @@ One Next.js app (App Router). Storefront and admin use separate route groups and
 
 | Route | Roles |
 |---|---|
-| `/admin` | Dashboard KPIs — ADMIN |
+| `/admin` | Dashboard KPIs — ADMIN, OPERATIONS |
 | `/admin/products`, `/admin/products/[id]` | ADMIN, CATALOG_MANAGER |
 | `/admin/categories`, `/admin/brands` | ADMIN, CATALOG_MANAGER |
 | `/admin/inventory` | ADMIN, OPERATIONS |

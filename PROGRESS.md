@@ -13,15 +13,15 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 11 — Admin Dashboard (next) |
-| **Current task** | Calm-navy redesign on branch `redesign/navy` (user-supplied inspiration). Full customer journey re-verified in Chrome |
-| **Last updated** | 2026-09-28 |
-| **Repo state** | Branch `redesign/navy` (from `main` @ `3a2cb47`): slice 2 (checkout/account) + calm-navy redesign, not yet committed |
-| **Blockers** | None. Note: app startup varied 17–70 s on dev machine — revisit in Phase 13 performance review |
+| **Current phase** | Phase 11 — Admin Dashboard (slice 1 built, awaiting review) |
+| **Current task** | Slice 1 done (dashboard, orders, inventory). Next: slice 2 (products, categories/brands, customers, coupons, reviews) |
+| **Last updated** | 2026-09-29 |
+| **Repo state** | `main` @ `e481d80` (Phase 10 complete, merged from `redesign/navy`) |
+| **Blockers** | Integration tests (`*IT`) cannot start on this machine right now: a VPN route `172.17.0.0/24 via tun0` hijacks Docker's default bridge, so Testcontainers/Ryuk is unreachable. Disconnect the VPN (or delete that route) and run `./mvnw verify`; `AdminDashboardIT` has not run yet. Note: app startup varied 17–70 s on dev machine — revisit in Phase 13 performance review |
 
 ### Next up
-1. Commit on `redesign/navy`, then merge to `main` once the user approves the look (awaiting user go-ahead)
-2. Phase 11: `/admin` route group — KPI dashboard (needs an admin read-model endpoint), products, inventory, orders, customers, coupons, reviews
+1. Run `./mvnw verify` once Docker networking is fixed (see Blockers)
+2. Phase 11 slice 2: products editor, categories/brands, customers, coupons, reviews moderation
 3. Phase 12: move the ad-hoc Playwright journey into `frontend/e2e` and run it in CI
 
 ---
@@ -41,7 +41,7 @@
 | 8 | Promotions + Reviews | `[x]` |
 | 9 | Kafka + Outbox + Notifications | `[x]` |
 | 10 | Premium Next.js Storefront | `[x]` |
-| 11 | Admin Dashboard | `[ ]` |
+| 11 | Admin Dashboard | `[~]` |
 | 12 | Testing + Observability + CI/CD | `[ ]` |
 | 13 | Production Hardening | `[ ]` |
 
@@ -174,9 +174,11 @@
 
 ## Phase 11 — Admin Dashboard
 
-- [ ] Overview KPIs: revenue, orders, customers, products, low stock, pending orders, failed payments, recent activity
-- [ ] Management: products, categories, brands, inventory, orders, customers, coupons, reviews
-- [ ] Role-based access per screen
+- [x] Overview KPIs: revenue, orders, customers, products, low stock, pending orders, failed payments, recent activity (`GET /admin/dashboard`, admin module composes module APIs)
+- [x] Management (slice 1): orders (list, detail, fulfilment transitions, cancel, refunds), inventory (`GET /admin/stock` with names/SKUs, adjustments, thresholds)
+- [ ] Management (slice 2): products, categories, brands, customers, coupons, reviews
+- [x] Role-based access per screen (sidebar filtered by role; backend enforces)
+- [ ] `AdminDashboardIT` green (blocked by local Docker networking, see Blockers)
 
 ## Phase 12 — Testing + Observability + CI/CD
 
@@ -251,8 +253,10 @@
 | D-52 | Guest checkout | ✅ Decided | Not supported (orders belong to accounts); checkout sends guests to sign in and their cart follows them |
 | D-53 | Payment UI | ✅ Decided | Test-mode picker of mock cards, clearly labelled; replaced by the real provider's card element (D-39) |
 | D-55 | Visual direction | ✅ Decided (superseded) | v1 "lanes" too plain; v2 "night track" rejected by user as too heavy |
-| D-56 | Visual direction v3 | ⏳ Awaiting approval | Calm navy (Plus Jakarta Sans, navy/white, comparison table, numbered steps), light motion; on branch `redesign/navy` |
+| D-56 | Visual direction v3 | ✅ Decided (approved) | Calm navy (Plus Jakarta Sans, navy/white, comparison table, numbered steps), light motion; on branch `redesign/navy` |
 | D-57 | Hero + auth layout | ✅ Decided (user choice) | Full-bleed photo hero; split-screen sign-in/register in an `(auth)` route group. Unsplash photos in `public/images` |
+| D-58 | Admin read model | ✅ Decided | New `admin` module owns no tables; each module exposes a small stats method on its public API (`OrderApi.stats`, `AccountApi.customerStats`, `CatalogApi.publishedProductCount`, `InventoryApi.lowStockCount/stockItems`, new `PaymentApi`), plus `AuditLog.recent`. Figures are per-module consistent, not one snapshot. Dashboard days are UTC; revenue = paid-and-not-refunded orders placed in the period |
+| D-59 | Admin UI | ✅ Decided | `app/admin` (outside `(store)`), navy sidebar / mobile tab row, client pages with URL-held filters; revenue chart is hand-built SVG (single series, round ticks, hover + arrow-key tooltip, table view), no chart library. Added `--color-warn` for attention states |
 | D-54 | Deferred storefront items | ⏳ Open | Homepage testimonials (needs a public "recent approved reviews" endpoint), newsletter (needs backend), shared-layout product transition, password-reset pages |
 
 ---
@@ -277,3 +281,4 @@
 | 2026-09-29 | 10 | Redesign on user feedback ("boring"): UI/UX Pro Max research (kept fitness palette, typography and motion rules; rejected its luxury-brutalism system), night-track hero with 3D track + shoe tilt + colourway swatches, marquee, expanding lane panels, pinned Split Racer story, new product cards and header. Fixed wishlist load/click race found by E2E. tsc + eslint clean; journey passes. |
 | 2026-09-29 | 10 | User rejected night-track design; created branch `redesign/navy` and rebuilt the UI from a supplied reference: new tokens + Plus Jakarta Sans, navy hero with product screen, comparison table, category cards, steps, offer card; restyled header, cards, buttons and all pages. Light motion only. tsc + eslint clean; E2E journey passes. |
 | 2026-09-29 | 10 | User disliked hero and login; offered 3 options each, user chose full-bleed photo hero + split-screen auth. Added Unsplash photos (no brand logos, credits file), `(store)`/`(auth)` route groups, HeroPhoto, AuthShell. tsc + eslint clean; E2E journey passes. |
+| 2026-09-29 | 11 | Slice 1. Backend: stats methods on order/auth/catalog/inventory/payment APIs, `AuditLog.recent`, new admin module with `GET /admin/dashboard` + `GET /admin/stock` (ADMIN, OPERATIONS), `AdminDashboardIT`. Frontend: admin shell, dashboard (KPIs, revenue chart, needs-attention, activity), orders list/detail (transitions, cancel, refunds with idempotency key), inventory (adjust, threshold); header link for staff. Unit + Modulith tests green (63); ITs blocked by a VPN route over Docker's bridge. Smoke-tested endpoints on the local stack; browser flows (transition, refund, restock, validation) pass with no errors; storefront E2E still passes. tsc + eslint clean. |

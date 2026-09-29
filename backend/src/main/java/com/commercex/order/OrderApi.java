@@ -1,5 +1,6 @@
 package com.commercex.order;
 
+import java.time.Instant;
 import java.util.Optional;
 
 /**
@@ -40,4 +41,7 @@ public interface OrderApi {
 
     /** A DELIVERED order of this customer that contains the product (review eligibility). */
     Optional<Long> deliveredOrderContaining(long userId, long productId);
+
+    /** Dashboard figures for orders placed since {@code from}. */
+    OrderStats stats(Instant from);
 }

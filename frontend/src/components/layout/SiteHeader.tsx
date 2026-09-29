@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useMotionValueEvent, useScroll } from "motion/react";
-import { Search, ShoppingBag, User } from "lucide-react";
+import { LayoutDashboard, Search, ShoppingBag, User } from "lucide-react";
+import { hasRole } from "@/lib/admin";
 import { useAuth, useCart } from "@/components/providers";
 import { LANES } from "@/lib/nav";
 
@@ -48,6 +49,16 @@ export function SiteHeader() {
           </label>
         </form>
         <div className="ml-auto flex items-center gap-1 sm:ml-0">
+          {ready && hasRole(user, "ADMIN", "OPERATIONS") && (
+            <Link
+              href="/admin"
+              className={`flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm ${overHero ? "hover:bg-white/10" : "hover:bg-tile"}`}
+            >
+              <LayoutDashboard aria-hidden className="h-5 w-5" />
+              <span className="hidden sm:inline">Admin</span>
+              <span className="sr-only sm:hidden">Admin</span>
+            </Link>
+          )}
           <Link
             href={user ? "/account" : "/login"}
             className={`flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm ${overHero ? "hover:bg-white/10" : "hover:bg-tile"}`}

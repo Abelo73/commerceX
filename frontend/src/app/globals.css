@@ -18,6 +18,8 @@
   --color-sky: #8fb3ff;
   --color-ok: #16a34a;
   --color-split: #c9302f;
+  /* Admin status only: needs attention (amber, 4.5:1 on white). */
+  --color-warn: #b45309;
 
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
 

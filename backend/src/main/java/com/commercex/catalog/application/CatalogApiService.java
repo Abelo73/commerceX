@@ -65,6 +65,12 @@ class CatalogApiService implements CatalogApi {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public long publishedProductCount() {
+        return products.countByStatus(ProductStatus.PUBLISHED);
+    }
+
+    @Override
     @Transactional
     public void updateRating(long productId, BigDecimal average, int reviewCount) {
         products.updateRating(productId, average, reviewCount);

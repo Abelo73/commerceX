@@ -1,6 +1,7 @@
 package com.commercex.payment.infrastructure;
 
 import com.commercex.payment.domain.Payment;
+import com.commercex.payment.domain.PaymentStatus;
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
@@ -21,6 +22,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     Optional<Payment> findActiveByOrderId(long orderId);
 
     List<Payment> findByOrderIdOrderByCreatedAtAsc(long orderId);
+
+    long countByStatusAndCreatedAtGreaterThanEqual(PaymentStatus status, Instant from);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Payment p where p.id = :id")

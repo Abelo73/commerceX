@@ -10,6 +10,7 @@ import com.commercex.inventory.InventoryApi;
 import com.commercex.inventory.LowStockReached;
 import com.commercex.inventory.ReservationLine;
 import com.commercex.inventory.StockLevel;
+import com.commercex.inventory.StockPage;
 import com.commercex.inventory.StockStatusChanged;
 import com.commercex.inventory.infrastructure.InventoryRepository;
 import com.commercex.inventory.infrastructure.InventoryRepository.Item;
@@ -117,6 +118,21 @@ public class InventoryService implements InventoryApi {
             publishTransitions(after, after.available() - r.quantity());
         }
         return reservations.size();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StockPage stockItems(boolean lowStockOnly, int page, int size) {
+        return new StockPage(inventory.items(lowStockOnly, size, (long) page * size).stream()
+                .map(i -> new StockPage.Item(i.variantId(), i.onHand(), i.reserved(), i.available(), i.sold(),
+                        i.lowStockThreshold(), i.updatedAt()))
+                .toList(), page, size, inventory.countItems(lowStockOnly));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long lowStockCount() {
+        return inventory.countItems(true);
     }
 
     // ---- admin -----------------------------------------------------------------------------------

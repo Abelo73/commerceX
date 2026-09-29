@@ -31,4 +31,9 @@ public interface InventoryApi {
 
     /** Returns the order's active reservations to available stock. Returns the number of lines released. */
     int release(long orderId, String reason);
+
+    /** Stock rows, lowest availability first (admin overview). */
+    StockPage stockItems(boolean lowStockOnly, int page, int size);
+
+    long lowStockCount();
 }
